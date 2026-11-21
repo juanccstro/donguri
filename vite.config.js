@@ -8,6 +8,12 @@ const host = process.env.TAURI_DEV_HOST;
 export default defineConfig(() => ({
   plugins: [sveltekit()],
 
+  // Every window is its own page: pre-bundle what they share up front, so the
+  // dev server never reloads all windows when one opens for the first time.
+  optimizeDeps: {
+    include: ["@tauri-apps/api/core", "@tauri-apps/api/event", "@tauri-apps/api/webviewWindow"],
+  },
+
   // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
   //
   // 1. prevent Vite from obscuring rust errors

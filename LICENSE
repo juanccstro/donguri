@@ -1,0 +1,53 @@
+Donguri Source-Available License 1.0
+
+Copyright (c) 2026 juanccstro (https://github.com/juanccstro)
+All rights reserved, except for the permissions granted below.
+
+"Donguri" means the software, source code, artwork (including the squirrel,
+the acorn and every sprite and icon), user interface design and documentation
+in this repository, and any official build published by the author.
+
+1. Use. You may download, install and use the official builds of Donguri,
+   free of charge, for personal or professional purposes.
+
+2. Reading the code. You may read and study the source code and build it on
+   your own computer for your own use only.
+
+3. Contributions. You may fork this repository on GitHub solely to prepare
+   changes and propose them to the author through pull requests to
+   https://github.com/juanccstro/donguri. By opening a pull request you agree
+   that your contribution is licensed to the author under these same terms,
+   and that the author may use, modify and publish it as part of Donguri.
+
+4. Not allowed without the author's written permission:
+   a. publishing, distributing, selling, sublicensing or hosting Donguri, a
+      modified version of it, or any build of it, by any means;
+   b. publishing your own project, app or repository that is based on Donguri
+      or reuses its code, artwork, characters or recognisable visual style;
+   c. removing or changing this license, the copyright notice or the credit to
+      the author.
+
+5. Credit. Any permitted mention, review or showcase of Donguri must credit
+   the author and link to https://github.com/juanccstro/donguri.
+
+6. No warranty. Donguri is provided "as is", without warranty of any kind. The
+   author is not liable for any claim, damages or other liability arising from
+   its use.
+
+7. Termination. Any breach of these terms ends the permissions granted here.
+
+For any other use, contact the author through GitHub.
+
+---
+
+Licencia de código visible de Donguri (resumen en español; el texto en inglés
+de arriba es el que vale):
+- Puedes descargar, instalar y usar Donguri gratis, para uso personal o
+  profesional.
+- Puedes leer el código y compilarlo para usarlo tú.
+- Puedes hacer un fork en GitHub solo para proponer cambios mediante pull
+  request a este repositorio.
+- No puedes publicar, vender ni distribuir Donguri ni versiones modificadas,
+  ni crear un proyecto propio basado en su código, sus dibujos o su estilo,
+  sin permiso escrito del autor.
+- Hay que mantener siempre el crédito al autor.

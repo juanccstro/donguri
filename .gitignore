@@ -16,3 +16,6 @@ vite.config.ts.timestamp-*
 CLAUDE.md
 .claude/
 docs/SPEC.md
+
+# Stray captures
+/*.png

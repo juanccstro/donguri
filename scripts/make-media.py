@@ -1,5 +1,5 @@
-"""Builds the README artwork straight from the sprites, so it always matches
-the app: banner, animated squirrel, Pomodoro acorn and the looks.
+"""Builds the README banner and feature icons straight from the sprites and
+the app's icons (the cards and GIFs come from make-cards.py).
 
 Usage: python scripts/make-media.py   (writes into docs/media/)
 """
@@ -98,6 +98,11 @@ def banner():
     img.paste(sq, (150, H - 24 - sq.height), sq)
     end = text(d, "DONGURI", 480, 120, 14, INK)
     d.rectangle([480, 240, end - 14, 250], fill=ACCENT)
+    # rounded corners, like every other image in the README
+    mask = Image.new("L", img.size, 0)
+    ImageDraw.Draw(mask).rounded_rectangle([0, 0, W - 1, H - 1], radius=28, fill=255)
+    img = img.convert("RGBA")
+    img.putalpha(mask)
     img.save(OUT / "banner.png")
 
 
@@ -153,9 +158,6 @@ def looks():
 
 
 banner()
-lively_gif()
-pomodoro_gif()
-looks()
 print("written:", ", ".join(sorted(p.name for p in OUT.iterdir())))
 
 # --- README feature icons, from the app's own 9x9 icons ------------------------

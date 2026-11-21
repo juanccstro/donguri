@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/media/banner.png" alt="Donguri" width="720">
+  <img src="docs/media/banner.png" alt="Donguri" width="800">
 </p>
 
 <p align="center">
@@ -16,7 +16,7 @@
 </p>
 
 <p align="center">
-  <img src="docs/media/demo.gif" alt="Seleccionas código, tocas la bellota y Donguri lo explica" width="632">
+  <img src="docs/media/hero.gif" alt="Seleccionas código, tocas la bellota y Donguri lo explica" width="800">
 </p>
 
 ## Qué hace
@@ -54,24 +54,56 @@ Todo se cambia en **Ajustes**, y la configuración inicial se repite desde *Ajus
 
 ## Galería
 
-<p align="center">
-  <img src="docs/media/menu.png" alt="Menú radial" width="420">
-  <img src="docs/media/answer.png" alt="Respuesta en el bocadillo" width="300">
-</p>
-<p align="center">
-  <img src="docs/media/kura.png" alt="Nidos" width="300">
-  <img src="docs/media/pomodoro-panel.png" alt="Pomodoro" width="250">
-  <img src="docs/media/pomodoro.gif" alt="La bellota se llena durante el Pomodoro" width="160">
-</p>
-<p align="center">
-  <img src="docs/media/setup-squirrel.png" alt="Configuración inicial" width="270">
-  <img src="docs/media/setup-quick.png" alt="Bellota rápida" width="270">
-  <img src="docs/media/setup-ai.png" alt="IA" width="270">
-</p>
-<p align="center">
-  <img src="docs/media/squirrel.gif" alt="Modo Viva" width="160">
-  <img src="docs/media/looks.png" alt="Colores y accesorios" width="440">
-</p>
+<table>
+  <tr>
+    <td align="center" width="50%">
+      <img src="docs/media/card-quick.png" alt="Bellota rápida"><br>
+      <b>Bellota rápida</b><br>
+      <sub>Selecciona texto en cualquier app y elige qué hacer con él</sub>
+    </td>
+    <td align="center" width="50%">
+      <img src="docs/media/card-answer.png" alt="Respuesta de Donguri"><br>
+      <b>Respuestas al momento</b><br>
+      <sub>Explica, resume o traduce en un bocadillo</sub>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" width="50%">
+      <img src="docs/media/card-menu.png" alt="Menú de la ardilla"><br>
+      <b>Un clic en la ardilla</b><br>
+      <sub>Preguntar, Nidos, Pegar nido, Pomodoro y Ajustes</sub>
+    </td>
+    <td align="center" width="50%">
+      <img src="docs/media/card-kura.png" alt="Nidos"><br>
+      <b>Nidos</b><br>
+      <sub>Todo lo que guardas, por temas y con buscador</sub>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" width="50%">
+      <img src="docs/media/card-pomodoro.png" alt="Pomodoro"><br>
+      <b>Pomodoro</b><br>
+      <sub>Su bellota se llena mientras te concentras</sub>
+    </td>
+    <td align="center" width="50%">
+      <img src="docs/media/card-setup.png" alt="Configuración inicial"><br>
+      <b>Configuración inicial</b><br>
+      <sub>Lista en un minuto, sin cuentas</sub>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" width="50%">
+      <img src="docs/media/card-lively.gif" alt="Modo Viva"><br>
+      <b>Modo Viva</b><br>
+      <sub>Respira, mueve la cola y a veces se le cae la bellota</sub>
+    </td>
+    <td align="center" width="50%">
+      <img src="docs/media/card-looks.png" alt="Colores y accesorios"><br>
+      <b>Tu ardilla</b><br>
+      <sub>5 colores y 6 accesorios</sub>
+    </td>
+  </tr>
+</table>
 
 ## Compilar desde el código
 

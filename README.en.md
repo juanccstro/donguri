@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/media/banner.png" alt="Donguri" width="720">
+  <img src="docs/media/banner.png" alt="Donguri" width="800">
 </p>
 
 <p align="center">
@@ -16,7 +16,7 @@
 </p>
 
 <p align="center">
-  <img src="docs/media/demo.gif" alt="Select code, touch the acorn and Donguri explains it" width="632">
+  <img src="docs/media/hero.gif" alt="Select code, touch the acorn and Donguri explains it" width="800">
 </p>
 
 <p align="center"><sub>The app speaks Spanish and English; the screenshots are in Spanish.</sub></p>
@@ -56,24 +56,56 @@ Everything can be changed in **Settings**; repeat the first setup from *Settings
 
 ## Gallery
 
-<p align="center">
-  <img src="docs/media/menu.png" alt="Radial menu" width="420">
-  <img src="docs/media/answer.png" alt="Answer bubble" width="300">
-</p>
-<p align="center">
-  <img src="docs/media/kura.png" alt="Nests" width="300">
-  <img src="docs/media/pomodoro-panel.png" alt="Pomodoro" width="250">
-  <img src="docs/media/pomodoro.gif" alt="The acorn fills during a Pomodoro" width="160">
-</p>
-<p align="center">
-  <img src="docs/media/setup-squirrel.png" alt="First setup" width="270">
-  <img src="docs/media/setup-quick.png" alt="Quick acorn" width="270">
-  <img src="docs/media/setup-ai.png" alt="AI" width="270">
-</p>
-<p align="center">
-  <img src="docs/media/squirrel.gif" alt="Lively mode" width="160">
-  <img src="docs/media/looks.png" alt="Colours and accessories" width="440">
-</p>
+<table>
+  <tr>
+    <td align="center" width="50%">
+      <img src="docs/media/card-quick.png" alt="Quick acorn"><br>
+      <b>Quick acorn</b><br>
+      <sub>Select text in any app and pick what to do with it</sub>
+    </td>
+    <td align="center" width="50%">
+      <img src="docs/media/card-answer.png" alt="Donguri's answer"><br>
+      <b>Instant answers</b><br>
+      <sub>Explains, summarizes or translates in a bubble</sub>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" width="50%">
+      <img src="docs/media/card-menu.png" alt="Squirrel menu"><br>
+      <b>One click on the squirrel</b><br>
+      <sub>Ask, Nests, Paste nest, Pomodoro and Settings</sub>
+    </td>
+    <td align="center" width="50%">
+      <img src="docs/media/card-kura.png" alt="Nests"><br>
+      <b>Nests</b><br>
+      <sub>Everything you save, by topic and searchable</sub>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" width="50%">
+      <img src="docs/media/card-pomodoro.png" alt="Pomodoro"><br>
+      <b>Pomodoro</b><br>
+      <sub>Her acorn fills while you focus</sub>
+    </td>
+    <td align="center" width="50%">
+      <img src="docs/media/card-setup.png" alt="First setup"><br>
+      <b>First setup</b><br>
+      <sub>Ready in a minute, no accounts</sub>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" width="50%">
+      <img src="docs/media/card-lively.gif" alt="Lively mode"><br>
+      <b>Lively mode</b><br>
+      <sub>She breathes, wags her tail and sometimes drops her acorn</sub>
+    </td>
+    <td align="center" width="50%">
+      <img src="docs/media/card-looks.png" alt="Colours and accessories"><br>
+      <b>Your squirrel</b><br>
+      <sub>5 colours and 6 accessories</sub>
+    </td>
+  </tr>
+</table>
 
 ## Build from source
 

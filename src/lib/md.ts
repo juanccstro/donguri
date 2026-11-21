@@ -6,11 +6,14 @@ function esc(s: string): string {
 }
 
 function inline(s: string): string {
-  return esc(s)
-    .replace(/`([^`]+)`/g, "<code>$1</code>")
-    .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+  // Code spans are set aside first, so "*" or "_" inside them stay literal.
+  const codes: string[] = [];
+  const out = esc(s)
+    .replace(/`([^`]+)`/g, (_, code: string) => `\u0000${codes.push(code) - 1}\u0000`)
+    .replace(/\*\*((?:[^*\u0000]|\u0000\d+\u0000)+)\*\*/g, "<strong>$1</strong>")
     .replace(/__([^_]+)__/g, "<strong>$1</strong>")
     .replace(/(^|[^*])\*([^*\n]+)\*/g, "$1<em>$2</em>");
+  return out.replace(/\u0000(\d+)\u0000/g, (_, i: string) => `<code>${codes[Number(i)]}</code>`);
 }
 
 export function markdown(src: string): string {

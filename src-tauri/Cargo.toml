@@ -1,6 +1,6 @@
 [package]
 name = "donguri"
-version = "0.1.0"
+version = "0.1.1"
 description = "Una ardilla pixel-art que guarda tu contexto para cualquier IA"
 authors = ["juanccstro"]
 license-file = "../LICENSE"

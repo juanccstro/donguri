@@ -10,15 +10,18 @@
 //! The same mouse events close the radial menu on an outside click.
 
 use crate::{actions, clip, i18n::t, notices, popups::{self, Place, Spec}, presence, saving};
-use tauri::{AppHandle, Manager};
+use tauri::AppHandle;
 
 pub const LABEL: &str = "seleccion";
 
 /// Where the last selection ended (physical px): the acorn's text lives there.
+#[cfg(windows)]
 static LAST_AT: std::sync::Mutex<Option<(i32, i32)>> = std::sync::Mutex::new(None);
 
 /// Whether a physical point falls inside one of our windows.
+#[cfg(windows)]
 fn inside(app: &AppHandle, label: &str, x: i32, y: i32) -> bool {
+    use tauri::Manager;
     let Some(w) = app.get_webview_window(label) else { return false };
     let (Ok(p), Ok(s)) = (w.outer_position(), w.outer_size()) else { return false };
     x >= p.x && y >= p.y && x < p.x + s.width as i32 && y < p.y + s.height as i32
@@ -79,6 +82,7 @@ fn start_windows(app: AppHandle) {
 }
 
 /// A click somewhere: close the radial menu and the acorn if it was outside.
+#[cfg(windows)]
 fn on_press(app: &AppHandle, x: i32, y: i32) {
     for label in ["menu", LABEL] {
         if popups::is_open(app, label) && !inside(app, label, x, y) {
@@ -95,6 +99,7 @@ fn spec(x: i32, y: i32) -> Spec {
     Spec { label: LABEL, url: "seleccion", w: 30.0, h: 30.0, focusable: false, place: Place::At { x: x + 12, y: y + 12 } }
 }
 
+#[cfg(windows)]
 fn show(app: &AppHandle, x: i32, y: i32) {
     *LAST_AT.lock().unwrap_or_else(|e| e.into_inner()) = Some((x, y));
     popups::open(app, spec(x, y));

@@ -21,14 +21,6 @@ mod fallback {
         false
     }
 
-    pub fn ours_at(_x: i32, _y: i32) -> bool {
-        false
-    }
-
-    pub fn chromium_at(_x: i32, _y: i32) -> bool {
-        false
-    }
-
     pub fn focus_window(win: &WebviewWindow) {
         let _ = win.set_focus();
     }
@@ -43,4 +35,4 @@ mod fallback {
     }
 }
 #[cfg(not(windows))]
-pub use fallback::{chromium_at, focus_last_app, focus_window, idle_ms, install, ours_at, set_visible};
+pub use fallback::{focus_last_app, focus_window, idle_ms, install, set_visible};

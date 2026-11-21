@@ -457,6 +457,7 @@ fn schedule_unhide(app: &AppHandle) {
 }
 
 /// Called by the platform hooks when the foreground window changes or moves.
+#[cfg_attr(not(windows), allow(dead_code))] // no macOS hook yet
 pub fn on_foreground(
     app: &AppHandle,
     exe: Option<String>,

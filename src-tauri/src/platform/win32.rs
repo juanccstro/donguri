@@ -154,7 +154,7 @@ unsafe fn fullscreen_monitor(hwnd: HWND) -> Option<(i32, i32)> {
 }
 
 /// Lower-cased executable file name of the window's process.
-unsafe fn exe_name(hwnd: HWND) -> Option<String> {
+pub(super) unsafe fn exe_name(hwnd: HWND) -> Option<String> {
     unsafe {
         let mut pid = 0u32;
         GetWindowThreadProcessId(hwnd, Some(&mut pid));

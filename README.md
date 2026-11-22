@@ -24,8 +24,8 @@
 | | |
 |---|---|
 | <img src="docs/media/icon-acorn.png" width="18" alt=""> **Bellota rápida** | Selecciona texto en cualquier app y aparece una bellotita: Preguntar, Resumir, Traducir, Explicar o Guardar. |
-| <img src="docs/media/icon-nest.png" width="18" alt=""> **Nidos** | Guarda textos, capturas y archivos por temas. Búscalos y pégalos como contexto donde quieras. |
-| <img src="docs/media/icon-ask.png" width="18" alt=""> **Pregunta** | Responde con tu clave de Gemini (tiene nivel gratis), Claude u OpenAI. Sin clave, abre Claude o ChatGPT con tu texto listo para pegar. |
+| <img src="docs/media/icon-nest.png" width="18" alt=""> **Nidos** | Guarda textos, capturas y archivos por temas. Búscalos y pégalos como contexto donde quieras. Incluye un historial del portapapeles opcional (solo en memoria). |
+| <img src="docs/media/icon-ask.png" width="18" alt=""> **Pregunta** | Responde con tu clave de Gemini (tiene nivel gratis), Claude u OpenAI. Ve tus capturas: recorta una zona y pregúntale qué es o qué texto tiene. Sin clave, abre Claude o ChatGPT con tu texto listo para pegar. |
 | <img src="docs/media/icon-plug.png" width="18" alt=""> **Tus nidos en Claude** | Se conecta a Claude Desktop y Claude Code: escribe «usa mi nido Viaje» y los usa con tu suscripción. |
 | <img src="docs/media/icon-clock.png" width="18" alt=""> **Pomodoro** | 25/5, 50/10, 90/20 o a tu medida. Su bellota se llena mientras te concentras y duerme en los descansos. |
 | <img src="docs/media/icon-lock.png" width="18" alt=""> **Privada** | Todo se queda en tu PC, las claves van al Administrador de credenciales de Windows, sin telemetría e invisible en grabaciones. |
@@ -49,6 +49,7 @@ No pide permisos de administrador y se desinstala desde *Configuración → Apli
 | **Ctrl+V** con el ratón encima | Le da lo que tengas copiado |
 | `Alt+Shift+S` · `Alt+Shift+X` | Guardar la selección · Capturar una zona |
 | `Alt+Shift+Space` · `Alt+Shift+B` | Pregunta rápida · Mostrar u ocultar |
+| `Alt+Shift+A` · `Alt+Shift+V` | Capturar y preguntar · Historial del portapapeles |
 
 Todo se cambia en **Ajustes**, y la configuración inicial se repite desde *Ajustes → Ayuda*.
 

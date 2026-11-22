@@ -6,6 +6,25 @@ use arboard::{Clipboard, ImageData};
 use enigo::{Direction, Enigo, Key, Keyboard, Settings};
 use std::{borrow::Cow, thread::sleep, time::Duration};
 
+/// Until when (ms since the epoch) clipboard changes are Donguri's own: the
+/// copy that grabs a selection, the paste and its restore. The clipboard
+/// history skips them.
+static OURS_UNTIL: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+
+fn now_ms() -> u64 {
+    std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |d| d.as_millis() as u64)
+}
+
+/// Marks the clipboard changes of the next `ms` as ours.
+fn ours_for(ms: u64) {
+    OURS_UNTIL.fetch_max(now_ms() + ms, std::sync::atomic::Ordering::Relaxed);
+}
+
+/// Whether a clipboard change happening now was made by Donguri.
+pub fn is_ours() -> bool {
+    now_ms() <= OURS_UNTIL.load(std::sync::atomic::Ordering::Relaxed)
+}
+
 pub enum Content {
     Text(String),
     Image { width: usize, height: usize, rgba: Vec<u8> },
@@ -91,6 +110,7 @@ pub fn copy_selection(foreground_exe: Option<&str>) -> Option<String> {
     }
     // Let a just-restored foreground window settle before sending Ctrl+C.
     sleep(Duration::from_millis(90));
+    ours_for(1500);
     let mut cb = Clipboard::new().ok()?;
     let saved = save(&mut cb);
     #[cfg(windows)]
@@ -116,6 +136,7 @@ pub fn copy_selection(foreground_exe: Option<&str>) -> Option<String> {
         }
     }
     let copied = copied?;
+    ours_for(500);
     restore(&mut cb, saved);
     copied
 }
@@ -132,7 +153,21 @@ pub fn read() -> Option<Content> {
 }
 
 pub fn set_text(text: &str) -> bool {
+    ours_for(500);
     Clipboard::new().and_then(|mut cb| cb.set_text(text)).is_ok()
+}
+
+fn png_to_image(png: &[u8]) -> Option<ImageData<'static>> {
+    let img = image::load_from_memory(png).ok()?.to_rgba8();
+    let (w, h) = img.dimensions();
+    Some(ImageData { width: w as usize, height: h as usize, bytes: Cow::Owned(img.into_raw()) })
+}
+
+/// Puts an image (PNG bytes) on the clipboard.
+pub fn set_png(png: &[u8]) -> bool {
+    ours_for(500);
+    let Some(img) = png_to_image(png) else { return false };
+    Clipboard::new().and_then(|mut cb| cb.set_image(img)).is_ok()
 }
 
 /// Re-sends Ctrl/Cmd+V to whatever has focus (used when our temporary
@@ -147,9 +182,20 @@ pub fn forward_paste() {
 /// Puts `text` into the app the user was last in. The clipboard is restored
 /// a moment later. Call off the main thread.
 pub fn paste_into_last_app(text: &str) -> bool {
+    paste_with(|cb| cb.set_text(Cow::Borrowed(text)).is_ok())
+}
+
+/// Same, with an image (PNG bytes).
+pub fn paste_png_into_last_app(png: &[u8]) -> bool {
+    let Some(img) = png_to_image(png) else { return false };
+    paste_with(move |cb| cb.set_image(img).is_ok())
+}
+
+fn paste_with(put: impl FnOnce(&mut Clipboard) -> bool) -> bool {
+    ours_for(1500);
     let Ok(mut cb) = Clipboard::new() else { return false };
     let saved = save(&mut cb);
-    if cb.set_text(Cow::Borrowed(text)).is_err() {
+    if !put(&mut cb) {
         return false;
     }
     if !platform::focus_last_app() {
@@ -159,6 +205,7 @@ pub fn paste_into_last_app(text: &str) -> bool {
     sleep(Duration::from_millis(150));
     let ok = chord('v').is_some();
     sleep(Duration::from_millis(400));
+    ours_for(500);
     restore(&mut cb, saved);
     ok
 }

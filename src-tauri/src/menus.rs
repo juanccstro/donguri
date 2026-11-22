@@ -35,6 +35,8 @@ pub fn build(app: &AppHandle, for_squirrel: bool) -> tauri::Result<Menu<Wry>> {
             .text("act:ask", t(en, "ask"))
             .item(&MenuItem::with_id(app, "act:save_selection", t(en, "save_selection"), true, Some(sc.save.as_str()))?)
             .item(&MenuItem::with_id(app, "act:capture", t(en, "capture"), true, Some(sc.capture.as_str()))?)
+            .item(&MenuItem::with_id(app, "act:capture_ask", t(en, "capture_ask"), true, Some(sc.capture_ask.as_str()))?)
+            .item(&MenuItem::with_id(app, "act:clipboard", t(en, "clipboard"), true, Some(sc.clipboard.as_str()))?)
             .text("act:save_clipboard", t(en, "save_clipboard"))
             .text("act:kura", t(en, "kura"))
             .text("act:context", t(en, "paste_context"))

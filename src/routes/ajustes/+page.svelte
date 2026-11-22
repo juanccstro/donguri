@@ -35,7 +35,8 @@
     handoff: "claude" | "chatgpt";
     private_mode: boolean;
     blacklist: string[];
-    shortcuts: Record<"toggle" | "save" | "capture" | "quick", string>;
+    shortcuts: Record<"toggle" | "save" | "capture" | "quick" | "capture_ask" | "clipboard", string>;
+    clip_history: boolean;
   }
   interface Provider {
     id: "gemini" | "claude" | "openai";
@@ -311,7 +312,7 @@
             <p class="muted">{t("blacklist_empty")}</p>
           {/if}
         {:else if tab === "atajos"}
-          {#each [["toggle", "sc_toggle"], ["save", "sc_save"], ["capture", "sc_capture"], ["quick", "sc_quick"]] as [id, label]}
+          {#each [["toggle", "sc_toggle"], ["save", "sc_save"], ["capture", "sc_capture"], ["capture_ask", "sc_capture_ask"], ["quick", "sc_quick"], ["clipboard", "sc_clipboard"]] as [id, label]}
             {@const key = id as keyof Settings["shortcuts"]}
             <div class="row sc">
               <span class="grow">{t(label as Key)}</span>
@@ -430,6 +431,10 @@
             <input type="checkbox" checked={s.private_mode} onchange={(e) => set("private", e.currentTarget.checked)} />
             <span><strong>{t("private_mode")}</strong> <span class="muted">{t("private_d")}</span></span>
           </label>
+          <label class="check">
+            <input type="checkbox" checked={s.clip_history} onchange={(e) => set("clip_history", e.currentTarget.checked)} />
+            <span>{t("clip_history_d")}</span>
+          </label>
           <h4 class="title">{t("data_folder")}</h4>
           <p class="muted tiny">{dataFolder}</p>
           <button class="btn" onclick={() => invoke("open_data_folder")}><Icon name="nest" size={13} />{t("open_folder")}</button>
@@ -441,7 +446,7 @@
             {#if wipe}<button class="btn" onclick={() => (wipe = 0)}>{t("cancel")}</button>{/if}
           </div>
         {:else if tab === "ayuda"}
-          {@const vars = { save: s.shortcuts.save, capture: s.shortcuts.capture, quick: s.shortcuts.quick, toggle: s.shortcuts.toggle }}
+          {@const vars = { save: s.shortcuts.save, capture: s.shortcuts.capture, quick: s.shortcuts.quick, toggle: s.shortcuts.toggle, capture_ask: s.shortcuts.capture_ask, clipboard: s.shortcuts.clipboard }}
           {#each HELP[(app.config?.lang ?? "es") as "es" | "en"] as topic}
             <section class="help">
               <h4 class="title"><Icon name={topic.icon} size={15} />{topic.title}</h4>

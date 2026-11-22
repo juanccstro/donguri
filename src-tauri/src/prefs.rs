@@ -47,6 +47,7 @@ pub fn set_setting(app: AppHandle, key: String, value: Value) -> Result<Vec<Stri
             let v = as_bool()?;
             presence::update(&app, |s| s.selection_hint = v);
         }
+        "clip_history" => crate::history::set_enabled(&app, as_bool()?),
         "ai_suggest" => {
             let v = as_bool()?;
             presence::update(&app, |s| s.ai_suggest = v);
@@ -71,6 +72,8 @@ pub fn set_setting(app: AppHandle, key: String, value: Value) -> Result<Vec<Stri
                 "toggle" => s.shortcuts.toggle = v,
                 "save" => s.shortcuts.save = v,
                 "capture" => s.shortcuts.capture = v,
+                "capture_ask" => s.shortcuts.capture_ask = v,
+                "clipboard" => s.shortcuts.clipboard = v,
                 _ => s.shortcuts.quick = v,
             });
             return Ok(shortcuts::register_all(&app));

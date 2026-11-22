@@ -52,6 +52,8 @@ pub struct Shortcuts {
     pub save: String,
     pub capture: String,
     pub quick: String,
+    pub capture_ask: String,
+    pub clipboard: String,
 }
 
 impl Default for Shortcuts {
@@ -61,6 +63,8 @@ impl Default for Shortcuts {
             save: "Alt+Shift+S".into(),
             capture: "Alt+Shift+X".into(),
             quick: "Alt+Shift+Space".into(),
+            capture_ask: "Alt+Shift+A".into(),
+            clipboard: "Alt+Shift+V".into(),
         }
     }
 }
@@ -106,6 +110,8 @@ pub struct Settings {
     pub selection_hint: bool,
     /// Let the AI suggest a nest when saving (sends what is saved to the AI).
     pub ai_suggest: bool,
+    /// Keep a clipboard history in memory (opt-in).
+    pub clip_history: bool,
     /// Without an API key, questions open here: "claude" | "chatgpt".
     pub handoff: String,
     /// Lower-cased executable names where the squirrel always hides.
@@ -135,6 +141,7 @@ impl Default for Settings {
             welcome_done: false,
             selection_hint: true,
             ai_suggest: false,
+            clip_history: false,
             handoff: "claude".into(),
             blacklist: Vec::new(),
             hidden_until: None,

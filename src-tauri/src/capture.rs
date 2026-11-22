@@ -11,13 +11,15 @@ pub const LABEL: &str = "captura";
 #[derive(Default)]
 pub struct Shot {
     image: Option<image::RgbaImage>,
+    /// "Capturar y preguntar": the crop goes straight to the question bubble.
+    ask: bool,
 }
 
 pub fn init(app: &AppHandle) {
     app.manage(Mutex::new(Shot::default()));
 }
 
-pub fn start(app: &AppHandle) {
+pub fn start(app: &AppHandle, ask: bool) {
     let (private, en) = {
         let st = presence::state(app);
         (st.settings.private_mode, st.settings.en())
@@ -37,7 +39,7 @@ pub fn start(app: &AppHandle) {
         // Cover the whole monitor (physical pixels, from Tauri's view of it).
         let (px, py) = (target.position().x, target.position().y);
         let (w, h) = (target.size().width, target.size().height);
-        app.state::<Mutex<Shot>>().lock().unwrap_or_else(|e| e.into_inner()).image = Some(img);
+        *app.state::<Mutex<Shot>>().lock().unwrap_or_else(|e| e.into_inner()) = Shot { image: Some(img), ask };
         popups::open(
             &app,
             Spec { label: LABEL, url: "captura", w: 100.0, h: 100.0, focusable: true, place: Place::Cover { x: px, y: py, w, h } },
@@ -59,7 +61,7 @@ pub fn capture_image(app: AppHandle) -> Option<String> {
 /// Rectangle as fractions (0..1) of the screenshot; `None` cancels.
 #[tauri::command]
 pub fn capture_finish(app: AppHandle, rect: Option<[f64; 4]>) {
-    let img = app.state::<Mutex<Shot>>().lock().ok().and_then(|mut s| s.image.take());
+    let (img, ask) = app.state::<Mutex<Shot>>().lock().map(|mut s| (s.image.take(), s.ask)).unwrap_or_default();
     popups::close(&app, LABEL);
     let (Some(img), Some([fx, fy, fw, fh])) = (img, rect) else { return };
     let (w, h) = (img.width() as f64, img.height() as f64);
@@ -72,8 +74,11 @@ pub fn capture_finish(app: AppHandle, rect: Option<[f64; 4]>) {
     }
     let crop = image::imageops::crop_imm(&img, x, y, cw, ch).to_image();
     let (cw, ch) = crop.dimensions();
-    if let Some(png) = saving::rgba_to_png(cw, ch, crop.into_raw()) {
-        let title = format!("Captura {}", chrono::Local::now().format("%d/%m %H:%M"));
-        saving::begin_image(&app, &png, title, "captura");
+    let Some(png) = saving::rgba_to_png(cw, ch, crop.into_raw()) else { return };
+    if ask {
+        crate::actions::ask_about_image(&app, png);
+        return;
     }
+    let title = format!("Captura {}", chrono::Local::now().format("%d/%m %H:%M"));
+    saving::begin_image(&app, &png, title, "captura");
 }

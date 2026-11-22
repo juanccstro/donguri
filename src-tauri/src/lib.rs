@@ -2,6 +2,7 @@ mod actions;
 mod ai;
 mod capture;
 mod clip;
+mod history;
 mod i18n;
 mod integrations;
 mod menus;
@@ -72,6 +73,13 @@ pub fn run() {
             actions::save_answer,
             actions::open_in,
             actions::handoff,
+            actions::ask_acorn,
+            saving::ask_pending,
+            history::clip_history,
+            history::clip_history_use,
+            history::clip_history_delete,
+            history::clip_history_clear,
+            history::clip_history_enable,
             selection::selection_action,
             popups::popup_wanted,
             pomodoro::pomodoro_status,
@@ -132,6 +140,7 @@ pub fn run() {
             menus::init_tray(handle)?;
             shortcuts::init(handle);
             selection::init(handle);
+            history::init(handle);
             actions::prepare_menu(handle);
             if !presence::state(handle).settings.welcome_done {
                 actions::open_welcome(handle);

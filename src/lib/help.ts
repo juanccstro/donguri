@@ -1,5 +1,5 @@
-// In-app usage guide (Ajustes → Ayuda). {save}, {capture}, {quick} and
-// {toggle} are replaced with the user's current shortcuts.
+// In-app usage guide (Ajustes → Ayuda). {save}, {capture}, {quick}, {toggle},
+// {capture_ask} and {clipboard} are replaced with the user's current shortcuts.
 import type { IconName } from "./Icon.svelte";
 
 export interface HelpTopic {
@@ -58,6 +58,25 @@ const es: HelpTopic[] = [
       "Deja el ratón un momento encima: Preguntar · Resumir · Traducir · Explicar · Guardar.",
       "Si sigues trabajando, se va sola. No toca tu portapapeles hasta que eliges algo.",
       "Para quitarla o volver a ponerla: clic derecho en la ardilla → «Bellota rápida», o Ajustes → Comportamiento.",
+    ],
+  },
+  {
+    icon: "crop",
+    title: "Preguntar sobre una captura",
+    points: [
+      "{capture_ask}: recorta una zona de la pantalla y pregúntale directamente (Describir · Sacar el texto · Explicar).",
+      "Después de una captura normal, «Preguntar sobre ella» hace lo mismo sin guardarla.",
+      "En Kura, las imágenes guardadas tienen un botón «Preguntar». Si un nido tiene imágenes, las 3 más recientes van con tus preguntas.",
+      "Sin clave de IA: la imagen se copia y se abre Claude o ChatGPT para que la pegues.",
+    ],
+  },
+  {
+    icon: "clipboard",
+    title: "Historial del portapapeles",
+    points: [
+      "Está en Kura, debajo de los nidos (o con {clipboard}). Es opcional: actívalo ahí o en Ajustes → Privacidad.",
+      "Clic en algo para pegarlo donde estabas; también puedes preguntarle, guardarlo como bellota o borrarlo.",
+      "Solo en memoria: se borra al salir. Nunca guarda contraseñas marcadas como privadas ni nada en modo privado.",
     ],
   },
   {
@@ -149,6 +168,25 @@ const en: HelpTopic[] = [
       "Rest the pointer on it: Ask · Summarize · Translate · Explain · Save.",
       "If you keep working it goes away. It leaves your clipboard alone until you pick something.",
       "To turn it off or on: right-click the squirrel → “Quick acorn”, or Settings → Behaviour.",
+    ],
+  },
+  {
+    icon: "crop",
+    title: "Ask about a capture",
+    points: [
+      "{capture_ask}: crop an area of the screen and ask about it right away (Describe · Get the text · Explain).",
+      "After a normal capture, «Ask about it» does the same without saving it.",
+      "In Kura, saved images have an «Ask» button. If a nest has images, the 3 newest go with your questions.",
+      "No AI key: the image is copied and Claude or ChatGPT opens so you can paste it.",
+    ],
+  },
+  {
+    icon: "clipboard",
+    title: "Clipboard history",
+    points: [
+      "It lives in Kura, below the nests (or press {clipboard}). It is optional: turn it on there or in Settings → Privacy.",
+      "Click an entry to paste it where you were; you can also ask about it, save it as an acorn or delete it.",
+      "Memory only: wiped when you quit. It never keeps passwords marked private, nor anything in private mode.",
     ],
   },
   {

@@ -320,3 +320,18 @@ pub fn save_clipboard_cmd(app: AppHandle) {
 pub fn save_selection_cmd(app: AppHandle) {
     save_selection(&app);
 }
+
+/// "Preguntar" in the nest picker: ask about the pending image instead of
+/// saving it (it is not kept; the answer can be saved from the bubble).
+#[tauri::command]
+pub fn ask_pending(app: AppHandle) {
+    let pending = data(&app).pending.lock().unwrap_or_else(|e| e.into_inner()).take();
+    popups::close(&app, PICKER);
+    let Some(Pending { file: Some(file), .. }) = pending.filter(|p| p.kind == "imagen") else { return };
+    let path = data(&app).files.join(&file);
+    let png = std::fs::read(&path).ok();
+    let _ = std::fs::remove_file(&path);
+    if let Some(png) = png {
+        crate::actions::ask_about_image(&app, png);
+    }
+}

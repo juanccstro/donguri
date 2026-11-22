@@ -37,6 +37,13 @@ const LAST_TRY_TIMEOUT: Duration = Duration::from_secs(20);
 /// first again, so the cheapest one comes back by itself once it recovers.
 const PENALTY: Duration = Duration::from_secs(2 * 60);
 const PROBE_TIMEOUT: Duration = Duration::from_secs(25);
+/// Extra wait for the first words per attached image (up to two).
+const IMAGE_EXTRA: Duration = Duration::from_secs(2);
+/// Images are scaled down to this longest side before they are sent: enough
+/// to read a screenshot, and every provider accepts it.
+const IMAGE_MAX_SIDE: u32 = 1568;
+/// At most this many images of a nest go with a question (newest first).
+const NEST_IMAGES: usize = 3;
 
 // ------------------------------------------------------------------ keys
 
@@ -351,7 +358,7 @@ async fn probe_one(provider: &str, key: &str, id: &str) -> Probe {
     let fut = async {
         let mut fast = true;
         loop {
-            let resp = request_with(provider, key, id, "Responde con una palabra.", &msgs, false, Some(64), fast)
+            let resp = request_with(provider, key, id, "Responde con una palabra.", &msgs, &[], false, Some(64), fast)
                 .send()
                 .await
                 .map_err(|_| (true, String::new()))?;
@@ -540,6 +547,35 @@ pub struct Msg {
     pub content: String,
 }
 
+/// An image sent with a question, already scaled down and base64-encoded.
+#[derive(Clone, Debug)]
+pub struct Img {
+    pub mime: &'static str,
+    pub data: String,
+}
+
+/// A PNG (or any image the `image` crate reads) ready to send: scaled to
+/// `IMAGE_MAX_SIDE` at most and encoded as PNG.
+pub fn prepare_image(bytes: &[u8]) -> Option<Img> {
+    use base64::Engine;
+    let img = image::load_from_memory(bytes).ok()?;
+    let img = if img.width().max(img.height()) > IMAGE_MAX_SIDE {
+        img.resize(IMAGE_MAX_SIDE, IMAGE_MAX_SIDE, image::imageops::FilterType::Triangle)
+    } else {
+        img
+    };
+    let mut out = std::io::Cursor::new(Vec::new());
+    img.write_to(&mut out, image::ImageFormat::Png).ok()?;
+    Some(Img { mime: "image/png", data: base64::engine::general_purpose::STANDARD.encode(out.into_inner()) })
+}
+
+/// The newest images saved in a nest, ready to send.
+fn nest_images(app: &AppHandle, nest_id: i64) -> Vec<Img> {
+    let files = saving::with_db(app, |c| store::nest_images(c, nest_id, NEST_IMAGES)).unwrap_or_default();
+    let dir = saving::data(app).files.clone();
+    files.iter().filter_map(|f| std::fs::read(dir.join(f)).ok()).filter_map(|b| prepare_image(&b)).collect()
+}
+
 /// Request body per provider. `fast` asks for the least thinking each model
 /// accepts: chat answers don't need deep reasoning and it saves time and money.
 #[allow(clippy::too_many_arguments)]
@@ -549,18 +585,36 @@ fn request_with(
     model: &str,
     system: &str,
     messages: &[Msg],
+    images: &[Img],
     stream: bool,
     max_tokens: Option<u32>,
     fast: bool,
 ) -> reqwest::RequestBuilder {
     let c = client();
+    // Images go with the first question of the conversation.
+    let first = if images.is_empty() { None } else { messages.iter().position(|m| m.role == "user") };
     match provider {
         "claude" => {
+            let msgs: Vec<Value> = messages
+                .iter()
+                .enumerate()
+                .map(|(i, m)| {
+                    if Some(i) != first {
+                        return json!({"role": m.role, "content": m.content});
+                    }
+                    let mut parts: Vec<Value> = images
+                        .iter()
+                        .map(|im| json!({"type": "image", "source": {"type": "base64", "media_type": im.mime, "data": im.data}}))
+                        .collect();
+                    parts.push(json!({"type": "text", "text": m.content}));
+                    json!({"role": m.role, "content": parts})
+                })
+                .collect();
             let mut body = json!({
                 "model": model,
                 "max_tokens": max_tokens.unwrap_or(4096),
                 "system": system,
-                "messages": messages,
+                "messages": msgs,
                 "stream": stream,
             });
             if fast {
@@ -573,7 +627,16 @@ fn request_with(
         }
         "openai" => {
             let mut msgs = vec![json!({"role": "system", "content": system})];
-            msgs.extend(messages.iter().map(|m| json!({"role": m.role, "content": m.content})));
+            msgs.extend(messages.iter().enumerate().map(|(i, m)| {
+                if Some(i) != first {
+                    return json!({"role": m.role, "content": m.content});
+                }
+                let mut parts = vec![json!({"type": "text", "text": m.content})];
+                parts.extend(images.iter().map(|im| {
+                    json!({"type": "image_url", "image_url": {"url": format!("data:{};base64,{}", im.mime, im.data)}})
+                }));
+                json!({"role": m.role, "content": parts})
+            }));
             let mut body = json!({"model": model, "messages": msgs, "stream": stream});
             if let Some(n) = max_tokens {
                 body["max_completion_tokens"] = json!(n.max(256));
@@ -587,10 +650,17 @@ fn request_with(
         _ => {
             let contents: Vec<Value> = messages
                 .iter()
-                .map(|m| {
+                .enumerate()
+                .map(|(i, m)| {
+                    let mut parts: Vec<Value> = if Some(i) == first {
+                        images.iter().map(|im| json!({"inlineData": {"mimeType": im.mime, "data": im.data}})).collect()
+                    } else {
+                        Vec::new()
+                    };
+                    parts.push(json!({"text": m.content}));
                     json!({
                         "role": if m.role == "assistant" { "model" } else { "user" },
-                        "parts": [{"text": m.content}],
+                        "parts": parts,
                     })
                 })
                 .collect();
@@ -648,19 +718,21 @@ type StreamError = (bool, String);
 
 /// One streamed answer from one model. Gives up (retryably) if no text has
 /// arrived within `first_text`.
+#[allow(clippy::too_many_arguments)]
 async fn stream_once(
     provider: &str,
     key: &str,
     model: &str,
     system: &str,
     messages: &[Msg],
+    images: &[Img],
     on_text: &mut (dyn FnMut(&str) + Send),
     first_text: Duration,
 ) -> Result<(), StreamError> {
     let deadline = Instant::now() + first_text;
     let mut fast = true;
     let resp = loop {
-        let send = request_with(provider, key, model, system, messages, true, None, fast).send();
+        let send = request_with(provider, key, model, system, messages, images, true, None, fast).send();
         let resp = tokio::time::timeout_at(deadline.into(), send)
             .await
             .map_err(|_| (true, "tarda demasiado".to_string()))?
@@ -723,28 +795,32 @@ async fn stream_once(
 /// Streams from the planned models in order, moving on when one is
 /// overloaded, out of quota for now or too slow to start. `on_switch` is told
 /// about each change. Returns the model that answered.
+#[allow(clippy::too_many_arguments)]
 async fn stream_planned(
     order: &[String],
     provider: &str,
     key: &str,
     system: &str,
     messages: &[Msg],
+    images: &[Img],
     on_text: &mut (dyn FnMut(&str) + Send),
     on_switch: &mut (dyn FnMut(&str, &str) + Send),
 ) -> Result<String, String> {
     let mut last = String::from("sin modelos");
     let tries = order.len().min(6);
     let words = crate::store::word_count(system) + messages.iter().map(|m| crate::store::word_count(&m.content)).sum::<usize>();
-    let first_wait = first_text_wait(words);
+    // Reading an image takes a model a moment more before its first word.
+    let first_wait = first_text_wait(words) + IMAGE_EXTRA * images.len().min(2) as u32;
     for (i, model) in order.iter().take(tries).enumerate() {
         let wait = if i + 1 == tries { LAST_TRY_TIMEOUT } else { first_wait };
-        match stream_once(provider, key, model, system, messages, on_text, wait).await {
+        match stream_once(provider, key, model, system, messages, images, on_text, wait).await {
             Ok(()) => {
                 recent::answered(model);
                 return Ok(model.clone());
             }
             // Saturated, or not offered to this key: try the next one.
-            Err((retry, msg)) if (retry || not_offered(&msg)) && i + 1 < tries => {
+            // With images, a text-only model refuses them: the next one may see.
+            Err((retry, msg)) if (retry || not_offered(&msg) || !images.is_empty()) && i + 1 < tries => {
                 recent::failed(model);
                 on_switch(model, &order[i + 1]);
                 last = msg;
@@ -772,6 +848,7 @@ pub async fn complete(app: &AppHandle, prompt: &str) -> Result<String, String> {
         &key,
         "Responde de forma directa, sin preámbulos.",
         &msgs,
+        &[],
         &mut |t| out.push_str(t),
         &mut |_, _| {},
     )
@@ -796,6 +873,9 @@ pub struct ChatRequest {
     messages: Vec<Msg>,
     selection: Option<String>,
     nest_id: Option<i64>,
+    /// Send the image the bubble was opened with (a capture, a saved image).
+    #[serde(default)]
+    image: bool,
 }
 
 #[derive(Serialize)]
@@ -849,6 +929,20 @@ pub async fn chat_start(app: AppHandle, req: ChatRequest) -> Result<ChatMeta, St
     let last_question = req.messages.iter().rev().find(|m| m.role == "user").map(|m| m.content.clone());
     let (ctx, truncated) = context(&app, req.selection.as_deref(), req.nest_id, last_question.as_deref());
     let system = format!("{}{}", system_prompt(en), ctx);
+    let mut images: Vec<Img> = Vec::new();
+    if req.image
+        && let Some(img) = crate::actions::ask_image(&app).and_then(|png| prepare_image(&png))
+    {
+        images.push(img);
+    }
+    if let Some(id) = req.nest_id {
+        // The image asked about may be in the nest too: send it once.
+        for img in nest_images(&app, id) {
+            if !images.iter().any(|i| i.data == img.data) {
+                images.push(img);
+            }
+        }
+    }
 
     presence::animate(&app, "think");
     let id = req.id;
@@ -866,6 +960,7 @@ pub async fn chat_start(app: AppHandle, req: ChatRequest) -> Result<ChatMeta, St
             &key,
             &system,
             &req.messages,
+            &images,
             &mut |t| {
                 if !started {
                     started = true;

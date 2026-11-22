@@ -18,6 +18,8 @@ struct AskState {
     quick: bool,
     /// Quick action to run as soon as the bubble opens.
     auto: Option<String>,
+    /// An image to ask about (a capture or a saved image), as PNG.
+    image: Option<Vec<u8>>,
 }
 
 pub fn init(app: &AppHandle) {
@@ -71,7 +73,9 @@ pub fn run(app: &AppHandle, action: &str) {
         "settings" => open_settings(app, None),
         "save_selection" => saving::save_selection(app),
         "save_clipboard" => saving::save_clipboard(app),
-        "capture" => crate::capture::start(app),
+        "capture" => crate::capture::start(app, false),
+        "capture_ask" => crate::capture::start(app, true),
+        "clipboard" => crate::history::open(app),
         "hide" if !presence::state(app).hidden() => presence::toggle(app),
         _ => {}
     }
@@ -106,9 +110,35 @@ pub fn ask_with(app: &AppHandle, selection: String, auto: Option<String>) {
     open_bubble(app, Some(selection), false, auto);
 }
 
+/// Opens the question bubble about an image (PNG bytes).
+pub fn ask_about_image(app: &AppHandle, png: Vec<u8>) {
+    presence::show_for_action(app);
+    open_bubble_with(app, AskState { image: Some(png), ..Default::default() });
+}
+
+/// The image the open bubble is about, if any.
+pub fn ask_image(app: &AppHandle) -> Option<Vec<u8>> {
+    app.state::<Mutex<AskState>>().lock().ok()?.image.clone()
+}
+
+/// "Preguntar" on a saved image acorn (Kura).
+#[tauri::command]
+pub fn ask_acorn(app: AppHandle, id: i64) -> Result<(), String> {
+    let file = saving::with_db(&app, |c| store::acorn(c, id))?
+        .and_then(|a| a.file.filter(|_| a.kind == "imagen"))
+        .ok_or("not an image")?;
+    let png = std::fs::read(saving::data(&app).files.join(file)).map_err(|e| e.to_string())?;
+    ask_about_image(&app, png);
+    Ok(())
+}
+
 fn open_bubble(app: &AppHandle, selection: Option<String>, quick: bool, auto: Option<String>) {
+    open_bubble_with(app, AskState { selection, quick, auto, image: None });
+}
+
+fn open_bubble_with(app: &AppHandle, state: AskState) {
     if let Ok(mut s) = app.state::<Mutex<AskState>>().lock() {
-        *s = AskState { selection, quick, auto };
+        *s = state;
     }
     popups::reopen(app, Spec { label: BUBBLE, url: "bocadillo", w: 360.0, h: 150.0, focusable: true, place: Place::Beside });
     presence::animate(app, "alert");
@@ -123,15 +153,21 @@ pub struct AskContext {
     has_key: bool,
     auto: Option<String>,
     handoff: String,
+    /// The image being asked about, as a data URL for the bubble to show.
+    image: Option<String>,
 }
 
 #[tauri::command]
 pub fn ask_context(app: AppHandle) -> AskContext {
-    let (selection, quick, auto) = app
+    let (selection, quick, auto, image) = app
         .state::<Mutex<AskState>>()
         .lock()
-        .map(|mut s| (s.selection.clone(), s.quick, s.auto.take()))
+        .map(|mut s| (s.selection.clone(), s.quick, s.auto.take(), s.image.clone()))
         .unwrap_or_default();
+    let image = image.map(|png| {
+        use base64::Engine;
+        format!("data:image/png;base64,{}", base64::engine::general_purpose::STANDARD.encode(png))
+    });
     let (active, handoff) = {
         let st = presence::state(&app);
         (st.settings.active_nest, st.settings.handoff.clone())
@@ -145,13 +181,25 @@ pub fn ask_context(app: AppHandle) -> AskContext {
         has_key: ai::any_configured(),
         auto,
         handoff,
+        image,
     }
 }
 
 /// No API key: open the question, with its selection and nest, in the
 /// user's own Claude or ChatGPT (their subscription pays, not Donguri).
 #[tauri::command]
-pub fn handoff(app: AppHandle, question: String, selection: Option<String>, nest_id: Option<i64>, target: String) {
+pub fn handoff(app: AppHandle, question: String, selection: Option<String>, nest_id: Option<i64>, target: String, image: Option<bool>) {
+    // Links carry only text: the image goes on the clipboard, to paste there.
+    if image.unwrap_or(false)
+        && let Some(png) = ask_image(&app)
+    {
+        let to = if target == "chatgpt" { "chatgpt" } else { "claude" };
+        presence::update(&app, |s| s.handoff = to.into());
+        clip::set_png(&png);
+        open_link(&app, to, &question);
+        notices::show(&app, "info", t(en(&app), "image_copied_paste"));
+        return;
+    }
     let (ctx, _) = ai::context(&app, selection.as_deref(), nest_id, Some(&question));
     let text = if ctx.trim().is_empty() { question } else { format!("{question}
 {ctx}") };
@@ -250,18 +298,22 @@ fn has_url_handler(_scheme: &str) -> bool {
 #[tauri::command]
 pub fn open_in(app: AppHandle, target: String, text: String) {
     clip::set_text(&text);
-    // Only the desktop app gets the text in its link: in a web address it
-    // would stay in the browser history (and in history sync). The web
-    // versions open empty and the text is already on the clipboard.
+    open_link(&app, &target, &text);
+    notices::show(&app, "info", t(en(&app), "copied_paste"));
+}
+
+/// Only the desktop app gets the text in its link: in a web address it
+/// would stay in the browser history (and in history sync). The web
+/// versions open empty.
+fn open_link(app: &AppHandle, target: &str, text: &str) {
     let url = if target == "claude" && text.chars().count() <= 6000 && has_url_handler("claude") {
-        format!("claude://claude.ai/new?q={}", urlencoding::encode(&text))
+        format!("claude://claude.ai/new?q={}", urlencoding::encode(text))
     } else if target == "claude" {
         "https://claude.ai/new".into()
     } else {
         "https://chatgpt.com/".into()
     };
     let _ = app.opener().open_url(url, None::<&str>);
-    notices::show(&app, "info", t(en(&app), "copied_paste"));
 }
 
 // ------------------------------------------------------------- context
@@ -359,7 +411,17 @@ pub fn open_pomodoro(app: &AppHandle) {
 }
 
 pub fn open_kura(app: &AppHandle) {
-    popups::open(app, Spec { label: "kura", url: "kura", w: 460.0, h: 560.0, focusable: true, place: Place::Center });
+    open_kura_at(app, false);
+}
+
+/// Kura, showing the clipboard history instead of a nest when `clipboard`.
+pub fn open_kura_at(app: &AppHandle, clipboard: bool) {
+    let fresh = popups::get(app, "kura").is_none();
+    let url = if clipboard { "kura?vista=portapapeles" } else { "kura" };
+    popups::open(app, Spec { label: "kura", url, w: 460.0, h: 560.0, focusable: true, place: Place::Center });
+    if clipboard && !fresh {
+        let _ = app.emit_to("kura", "kura-clipboard", ());
+    }
 }
 
 pub fn open_settings(app: &AppHandle, tab: Option<&str>) {

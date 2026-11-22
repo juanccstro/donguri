@@ -22,6 +22,8 @@
     auto: "summarize" | "translate" | "explain" | null;
     /** Without a key, questions open here. */
     handoff: "claude" | "chatgpt";
+    /** A capture or saved image to ask about (data URL). */
+    image: string | null;
   }
   interface Msg {
     role: "user" | "assistant";
@@ -31,6 +33,7 @@
   let ctx = $state<AskContext | null>(null);
   let useSelection = $state(true);
   let useNest = $state(true);
+  let useImage = $state(true);
   let messages = $state<Msg[]>([]);
   let shown = $state(""); // the answer as typed so far
   let queue = ""; // received but not yet typed
@@ -55,6 +58,7 @@
     [...messages].reverse().find((m) => m.role === "assistant")?.content ?? "",
   );
   const hasSelection = $derived(!!ctx?.selection && useSelection);
+  const hasImage = $derived(!!ctx?.image && useImage);
   const firstQuestion = $derived(messages.find((m) => m.role === "user")?.content ?? "");
 
   // Text arrives in bursts; type it out letter by letter.
@@ -83,6 +87,7 @@
       selection: hasSelection ? ctx?.selection : null,
       nestId: useNest ? (ctx?.nest?.id ?? null) : null,
       target,
+      image: hasImage,
     });
     closeSelf();
   }
@@ -118,6 +123,7 @@
           messages: $state.snapshot(messages),
           selection: hasSelection ? ctx?.selection : null,
           nest_id: useNest ? (ctx?.nest?.id ?? null) : null,
+          image: hasImage,
         },
       });
       model = meta.model;
@@ -129,6 +135,10 @@
       else error = msg;
       clearInterval(waitTimer);
     }
+  }
+
+  function quickImage(kind: "describe" | "read_text" | "explain") {
+    send(t(kind === "describe" ? "p_describe" : kind === "read_text" ? "p_read_text" : "p_explain_image"));
   }
 
   function quick(kind: "summarize" | "translate" | "explain") {
@@ -226,6 +236,13 @@
       <button class="btn ghost" title={t("close")} onclick={close}><Icon name="close" size={14} /></button>
     </header>
 
+    {#if ctx?.image && useImage}
+      <div class="shot">
+        <img src={ctx.image} alt={t("using_image")} />
+        <button class="btn ghost" title={t("close")} onclick={() => (useImage = false)}><Icon name="close" size={11} /></button>
+      </div>
+    {/if}
+
     {#if ctx && ((ctx.selection && useSelection) || (ctx.nest && useNest))}
       <div class="tags">
         {#if ctx.selection && useSelection}
@@ -276,7 +293,13 @@
       {#if trimmed}<div class="note warn"><Icon name="warn" size={12} />{t("nest_trimmed")}</div>{/if}
       {#if error}<div class="note warn"><Icon name="warn" size={12} />{t("error_prefix")} {error}</div>{/if}
 
-      {#if !messages.length && hasSelection}
+      {#if !messages.length && hasImage}
+        <div class="quick">
+          <button class="btn" onclick={() => quickImage("describe")}>{t("describe")}</button>
+          <button class="btn" onclick={() => quickImage("read_text")}>{t("read_text")}</button>
+          <button class="btn" onclick={() => quickImage("explain")}>{t("explain")}</button>
+        </div>
+      {:else if !messages.length && hasSelection}
         <div class="quick">
           <button class="btn" onclick={() => quick("summarize")}>{t("summarize")}</button>
           <button class="btn" onclick={() => quick("translate")}>{t("translate")}</button>
@@ -327,6 +350,26 @@
 </div>
 
 <style>
+  .shot {
+    position: relative;
+    margin: 0 0 8px;
+    display: flex;
+    justify-content: center;
+    background: var(--sunk);
+    padding: 4px;
+  }
+  .shot img {
+    display: block;
+    max-width: 100%;
+    max-height: 150px;
+    object-fit: contain;
+  }
+  .shot button {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    padding: 2px;
+  }
   .wrap {
     display: inline-block;
     width: 380px;

@@ -5,8 +5,9 @@
 
 use donguri_lib::store;
 use rmcp::{
-    handler::server::wrapper::Parameters, schemars, tool, tool_handler, tool_router, transport::stdio,
-    ServerHandler, ServiceExt,
+    handler::server::wrapper::Parameters,
+    model::{CallToolResult, ContentBlock},
+    schemars, tool, tool_handler, tool_router, transport::stdio, ServerHandler, ServiceExt,
 };
 use serde::Deserialize;
 use std::path::PathBuf;
@@ -43,6 +44,11 @@ struct ReadAcornArgs {
 }
 
 impl Donguri {
+    /// Saved files (images, PDFs) live next to the database.
+    fn files(&self) -> PathBuf {
+        self.db.parent().map(|d| d.join("bellotas")).unwrap_or_default()
+    }
+
     fn conn(&self) -> Result<rusqlite::Connection, String> {
         store::open_readonly(&self.db).map_err(|e| format!("No puedo abrir los nidos de Donguri: {e}"))
     }
@@ -107,20 +113,28 @@ impl Donguri {
         Ok(format!("# Nido: {}\n\n{}{}", nest.name, t.text, note))
     }
 
-    #[tool(description = "Lee una bellota concreta de Donguri por su id.")]
-    fn leer_bellota(&self, Parameters(args): Parameters<ReadAcornArgs>) -> Result<String, String> {
+    #[tool(description = "Lee una bellota concreta de Donguri por su id. Si es una imagen (una captura), devuelve la imagen.")]
+    fn leer_bellota(&self, Parameters(args): Parameters<ReadAcornArgs>) -> Result<CallToolResult, String> {
         let c = self.conn()?;
         let a = store::acorn(&c, args.id)
             .map_err(|e| e.to_string())?
             .ok_or_else(|| format!("No existe la bellota {}.", args.id))?;
+        let heading = format!("### {}", a.title);
+        if a.kind == "imagen"
+            && let Some(png) = a.file.as_deref().and_then(|f| std::fs::read(self.files().join(f)).ok())
+        {
+            use base64::Engine;
+            let data = base64::engine::general_purpose::STANDARD.encode(png);
+            return Ok(CallToolResult::success(vec![ContentBlock::text(heading), ContentBlock::image(data, "image/png")]));
+        }
         let body = if a.content.trim().is_empty() { format!("[{} sin texto]", a.kind) } else { a.content };
-        Ok(format!("### {}\n\n{}", a.title, body))
+        Ok(CallToolResult::success(vec![ContentBlock::text(format!("{heading}\n\n{body}"))]))
     }
 }
 
 #[tool_handler(
     name = "donguri",
-    instructions = "Donguri guarda notas del usuario («bellotas») agrupadas en «nidos» por tema. Cuando el usuario diga «usa mi nido X» o mencione un nido, llama a leer_nido con ese nombre y usa su contenido como contexto. Usa listar_nidos si no sabes qué nidos hay y buscar para encontrar algo concreto."
+    instructions = "Donguri guarda notas del usuario («bellotas») agrupadas en «nidos» por tema. Cuando el usuario diga «usa mi nido X» o mencione un nido, llama a leer_nido con ese nombre y usa su contenido como contexto. Usa listar_nidos si no sabes qué nidos hay y buscar para encontrar algo concreto. Las imágenes aparecen como «[imagen · bellota N]»: léelas con leer_bellota."
 )]
 impl ServerHandler for Donguri {}
 

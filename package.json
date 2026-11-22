@@ -1,6 +1,6 @@
 {
   "name": "donguri",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Una ardilla pixel-art en el borde de tu pantalla que guarda tu contexto para cualquier IA.",
   "type": "module",
   "scripts": {

@@ -97,6 +97,13 @@
     }
   }
 
+  /** An image: ask about it instead of saving it. */
+  async function askIt() {
+    if (done) return;
+    done = true;
+    await invoke("ask_pending");
+  }
+
   async function createNest() {
     if (!newName.trim() || done) return;
     done = true;
@@ -194,6 +201,9 @@
         </span>
       </div>
     {/if}
+    {#if pending?.kind === "imagen"}
+      <button class="btn primary ask-it" onclick={askIt}><Icon name="ask" size={14} />{t("ask_about_it")}</button>
+    {/if}
 
     <ul class="list" role="listbox">
       {#each options as opt, i}
@@ -239,6 +249,11 @@
 </div>
 
 <style>
+  .ask-it {
+    width: 100%;
+    justify-content: center;
+    margin: 6px 0 2px;
+  }
   .wrap {
     display: inline-block;
     width: 270px;

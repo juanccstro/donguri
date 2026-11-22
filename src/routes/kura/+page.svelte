@@ -5,10 +5,12 @@
   import { loadConfig, t } from "$lib/app.svelte";
   import Icon, { type IconName } from "$lib/Icon.svelte";
   import Window from "$lib/Window.svelte";
+  import ClipHistory from "$lib/ClipHistory.svelte";
   import type { Key } from "$lib/i18n";
 
   // Kura (蔵): the storehouse. Nests on the left, acorns on the right,
-  // search across everything on top.
+  // search across everything on top. The clipboard history lives here too
+  // (last entry on the left), so it needs no window of its own.
 
   interface Nest {
     id: number;
@@ -54,6 +56,8 @@
   let shortcut = $state("Alt+Shift+S");
   let moving = $state(false);
   let renameInput = $state<HTMLInputElement>();
+  // ?vista=portapapeles (or the shortcut while Kura is open) shows the clipboard.
+  let clipView = $state(new URLSearchParams(location.search).get("vista") === "portapapeles");
 
   const selected = $derived(nests.find((n) => n.id === selectedId) ?? null);
   const nestName = (n: Nest) => (n.system ? t("unsorted") : n.name);
@@ -77,12 +81,21 @@
   let searchTimer: number | undefined;
   function onSearch() {
     clearTimeout(searchTimer);
+    if (clipView) return; // the clipboard list filters itself
     searchTimer = setTimeout(async () => {
       hits = query.trim() ? await invoke<Hit[]>("search", { query, nestId: null }) : null;
     }, 180);
   }
 
+  function showClipboard() {
+    clipView = true;
+    open = null;
+    hits = null;
+    query = "";
+  }
+
   async function selectNest(id: number) {
+    clipView = false;
     selectedId = id;
     open = null;
     hits = null;
@@ -168,6 +181,7 @@
     loadConfig();
     loadNests();
     const off = listen("data-changed", loadNests);
+    const offClip = listen("kura-clipboard", showClipboard);
     // Clicking outside Kura closes it (unless a confirmation is pending).
     const onBlur = () =>
       setTimeout(() => {
@@ -176,6 +190,7 @@
     window.addEventListener("blur", onBlur);
     return () => {
       off.then((f) => f());
+      offClip.then((f) => f());
       window.removeEventListener("blur", onBlur);
     };
   });
@@ -190,7 +205,7 @@
   <div class="cols">
     <nav class="nests scroll">
       {#each nests as n (n.id)}
-        <div class="nest" class:sel={n.id === selectedId && !hits}>
+        <div class="nest" class:sel={n.id === selectedId && !hits && !clipView}>
           {#if renaming === n.id}
             <input
               class="field rename"
@@ -211,10 +226,18 @@
         </div>
       {/each}
       <button class="btn ghost add" onclick={newNest}><Icon name="plus" size={13} />{t("new_nest")}</button>
+      <div class="nest clip" class:sel={clipView}>
+        <button class="pick" onclick={showClipboard}>
+          <Icon name="clipboard" size={13} />
+          <span class="name">{t("clip_title")}</span>
+        </button>
+      </div>
     </nav>
 
     <section class="acorns">
-      {#if hits}
+      {#if clipView}
+        <ClipHistory {query} />
+      {:else if hits}
         <div class="bar muted">{hits.length === 1 ? t("results_one") : hits.length ? t("results_n", { n: hits.length }) : t("no_results")}</div>
         <div class="list scroll">
           {#each hits as h (h.acorn.id)}
@@ -243,6 +266,9 @@
           {/if}
         </div>
         <div class="tools">
+          {#if open.image}
+            <button class="btn primary" onclick={() => open && invoke("ask_acorn", { id: open.id })}><Icon name="ask" size={13} />{t("ask_image")}</button>
+          {/if}
           {#if open.content}
             <button class="btn" onclick={() => invoke("copy_text", { text: open?.content ?? "" }).then(() => flash(t("copied")))}><Icon name="copy" size={13} />{t("copy")}</button>
           {/if}
@@ -391,6 +417,10 @@
   .add {
     margin-top: 6px;
     justify-content: flex-start;
+  }
+  .clip {
+    margin-top: auto;
+    padding-top: 8px;
   }
 
   .acorns {

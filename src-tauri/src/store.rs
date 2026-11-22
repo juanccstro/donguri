@@ -236,6 +236,16 @@ pub fn list_acorns(c: &Connection, nest_id: i64) -> Result<Vec<AcornSummary>> {
     .collect()
 }
 
+/// File names of the newest image acorns of a nest.
+pub fn nest_images(c: &Connection, nest_id: i64, limit: usize) -> Result<Vec<String>> {
+    c.prepare(
+        "SELECT file FROM acorns WHERE nest_id = ?1 AND kind = 'imagen' AND file IS NOT NULL
+         ORDER BY created_at DESC, id DESC LIMIT ?2",
+    )?
+    .query_map(rusqlite::params![nest_id, limit as i64], |r| r.get(0))?
+    .collect()
+}
+
 pub fn acorn(c: &Connection, id: i64) -> Result<Option<Acorn>> {
     c.query_row(
         "SELECT id, nest_id, kind, title, content, file, source, created_at FROM acorns WHERE id = ?1",
@@ -312,7 +322,8 @@ pub struct NestText {
 fn render_acorn(a: &Acorn) -> String {
     let content = a.content.trim();
     if content.is_empty() {
-        return format!("### {}\n\n[{}]\n", a.title, a.kind);
+        // No text (an image): say what it is and its id, so an AI can ask for it.
+        return format!("### {}\n\n[{} · bellota {}]\n", a.title, a.kind, a.id);
     }
     // Titles made from the first line add nothing: skip the heading then.
     let stem = a.title.trim_end_matches('…').trim();

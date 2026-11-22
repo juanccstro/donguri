@@ -2,6 +2,8 @@
 //! activating them, foreground/fullscreen detection and display changes.
 
 #[cfg(windows)]
+pub mod clipwatch;
+#[cfg(windows)]
 pub mod mouse;
 #[cfg(windows)]
 mod win32;

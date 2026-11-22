@@ -14,7 +14,7 @@ pub fn init(app: &AppHandle) {
     register_all(app);
 }
 
-/// (Re)registers the four shortcuts from settings. Returns the ones that
+/// (Re)registers the shortcuts from settings. Returns the ones that
 /// could not be registered (taken by another app, invalid…).
 pub fn register_all(app: &AppHandle) -> Vec<String> {
     let sc = presence::state(app).settings.shortcuts.clone();
@@ -22,7 +22,14 @@ pub fn register_all(app: &AppHandle) -> Vec<String> {
     let _ = gs.unregister_all();
     let mut bound = Vec::new();
     let mut failed = Vec::new();
-    for (action, text) in [("toggle", &sc.toggle), ("save", &sc.save), ("capture", &sc.capture), ("quick", &sc.quick)] {
+    for (action, text) in [
+        ("toggle", &sc.toggle),
+        ("save", &sc.save),
+        ("capture", &sc.capture),
+        ("quick", &sc.quick),
+        ("capture_ask", &sc.capture_ask),
+        ("clipboard", &sc.clipboard),
+    ] {
         if text.trim().is_empty() {
             continue;
         }
@@ -49,7 +56,9 @@ pub fn handle(app: &AppHandle, shortcut: &Shortcut, event: ShortcutEvent) {
     match action {
         Some("toggle") => presence::toggle(app),
         Some("save") => saving::save_selection(app),
-        Some("capture") => capture::start(app),
+        Some("capture") => capture::start(app, false),
+        Some("capture_ask") => capture::start(app, true),
+        Some("clipboard") => crate::history::open(app),
         Some("quick") => actions::ask(app, true),
         Some("paste") => {
             if presence::cursor_over_squirrel(app) {

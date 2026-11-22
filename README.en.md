@@ -26,8 +26,8 @@
 | | |
 |---|---|
 | <img src="docs/media/icon-acorn.png" width="18" alt=""> **Quick acorn** | Select text in any app and a tiny acorn appears: Ask, Summarize, Translate, Explain or Save. |
-| <img src="docs/media/icon-nest.png" width="18" alt=""> **Nests** | Save text, screenshots and files by topic. Search them and paste them as context anywhere. |
-| <img src="docs/media/icon-ask.png" width="18" alt=""> **Ask** | Answers with your Gemini (free tier), Claude or OpenAI key. With no key, it opens Claude or ChatGPT with your text ready to paste. |
+| <img src="docs/media/icon-nest.png" width="18" alt=""> **Nests** | Save text, screenshots and files by topic. Search them and paste them as context anywhere. Includes an optional clipboard history (memory only). |
+| <img src="docs/media/icon-ask.png" width="18" alt=""> **Ask** | Answers with your Gemini (free tier), Claude or OpenAI key. It sees your captures: crop an area and ask what it is or what text it holds. With no key, it opens Claude or ChatGPT with your text ready to paste. |
 | <img src="docs/media/icon-plug.png" width="18" alt=""> **Your nests in Claude** | Connects to Claude Desktop and Claude Code: type “use my Trip nest” and it uses them with your subscription. |
 | <img src="docs/media/icon-clock.png" width="18" alt=""> **Pomodoro** | 25/5, 50/10, 90/20 or your own. Her acorn fills while you focus and she naps during breaks. |
 | <img src="docs/media/icon-lock.png" width="18" alt=""> **Private** | Everything stays on your PC, keys go to the Windows Credential Manager, no telemetry, invisible in recordings. |
@@ -51,6 +51,7 @@ No admin rights needed; uninstall from *Settings → Apps*.
 | **Ctrl+V** with the pointer on her | Gives her what you copied |
 | `Alt+Shift+S` · `Alt+Shift+X` | Save selection · Capture an area |
 | `Alt+Shift+Space` · `Alt+Shift+B` | Quick question · Show or hide |
+| `Alt+Shift+A` · `Alt+Shift+V` | Capture and ask · Clipboard history |
 
 Everything can be changed in **Settings**; repeat the first setup from *Settings → Help*.
 

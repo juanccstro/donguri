@@ -21,6 +21,7 @@ fn ours_for(ms: u64) {
 }
 
 /// Whether a clipboard change happening now was made by Donguri.
+#[cfg_attr(not(windows), allow(dead_code))]
 pub fn is_ours() -> bool {
     now_ms() <= OURS_UNTIL.load(std::sync::atomic::Ordering::Relaxed)
 }

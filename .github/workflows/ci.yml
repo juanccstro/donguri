@@ -7,11 +7,9 @@ on:
 
 jobs:
   check:
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [windows-latest, macos-latest]
-    runs-on: ${{ matrix.os }}
+    # Donguri is Windows-only for now (the macOS code is placeholder stubs),
+    # so only Windows is checked.
+    runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
 

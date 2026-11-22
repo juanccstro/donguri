@@ -2,6 +2,8 @@
 //! it is gone when Donguri quits, and turning it off empties it. Copies marked
 //! private (password managers), copies made in private mode or in apps where
 //! the squirrel hides, and Donguri's own copies are never kept.
+// The clipboard watcher exists on Windows only.
+#![cfg_attr(not(windows), allow(dead_code))]
 
 use crate::{actions, clip, i18n::t, notices, popups, presence, saving};
 use serde::Serialize;

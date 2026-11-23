@@ -17,6 +17,7 @@ mod selection;
 mod settings;
 mod shortcuts;
 pub mod store;
+mod updates;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -74,6 +75,9 @@ pub fn run() {
             actions::open_in,
             actions::handoff,
             actions::ask_acorn,
+            updates::update_info,
+            updates::update_check_now,
+            updates::open_update,
             saving::ask_pending,
             history::clip_history,
             history::clip_history_use,
@@ -141,6 +145,7 @@ pub fn run() {
             shortcuts::init(handle);
             selection::init(handle);
             history::init(handle);
+            updates::init(handle);
             actions::prepare_menu(handle);
             if !presence::state(handle).settings.welcome_done {
                 actions::open_welcome(handle);

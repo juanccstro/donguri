@@ -78,7 +78,8 @@ pub fn build(app: &AppHandle, for_squirrel: bool) -> tauri::Result<Menu<Wry>> {
     }
     let blocked = blocked.build()?;
 
-    menu.separator()
+    let menu = menu
+        .separator()
         .item(&modes)
         .item(&sizes)
         .item(&behaviour)
@@ -86,9 +87,13 @@ pub fn build(app: &AppHandle, for_squirrel: bool) -> tauri::Result<Menu<Wry>> {
         .item(&check(app, "opt:selection_hint", t(en, "quick_acorn"), s.selection_hint)?)
         .item(&check(app, "opt:private", t(en, "private"), s.private_mode)?)
         .item(&PredefinedMenuItem::separator(app)?)
-        .text("act:settings", t(en, "settings"))
-        .text("quit", t(en, "quit"))
-        .build()
+        .text("act:settings", t(en, "settings"));
+    // A newer version: offered until it is installed.
+    let menu = match crate::updates::available(app) {
+        Some(v) => menu.text("update", t(en, "update_menu").replace("{v}", &v)),
+        None => menu,
+    };
+    menu.text("quit", t(en, "quit")).build()
 }
 
 pub fn init_tray(app: &AppHandle) -> tauri::Result<()> {
@@ -129,6 +134,7 @@ pub fn handle(app: &AppHandle, id: &str) {
         "hide_tomorrow" => presence::hide_until_tomorrow(app),
         "blacklist_add" => presence::blacklist_current(app),
         "quit" => actions::open_quit(app),
+        "update" => crate::updates::open_update(app.clone()),
         _ => {
             if let Some(action) = id.strip_prefix("act:") {
                 // The native menu took the foreground; give it back so the

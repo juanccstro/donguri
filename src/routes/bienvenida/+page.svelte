@@ -24,6 +24,7 @@
     selection_hint: boolean;
     exclude_from_capture: boolean;
     hide_fullscreen: boolean;
+    update_check: boolean;
     handoff: "claude" | "chatgpt";
     ai_suggest: boolean;
   }
@@ -188,6 +189,10 @@
         <label class="check px-box">
           <input type="checkbox" checked={s.hide_fullscreen} onchange={(e) => set("fullscreen", e.currentTarget.checked)} />
           <span><strong>{t("setup_fullscreen")}</strong><span class="muted small">{t("setup_fullscreen_d")}</span></span>
+        </label>
+        <label class="check px-box">
+          <input type="checkbox" checked={s.update_check} onchange={(e) => set("update_check", e.currentTarget.checked)} />
+          <span><strong>{t("setup_updates")}</strong><span class="muted small">{t("update_check_d")}</span></span>
         </label>
         <p class="muted small">{t("setup_privacy_note")}</p>
       {:else if step === "ai"}

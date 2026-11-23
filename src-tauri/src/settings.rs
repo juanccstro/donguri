@@ -112,6 +112,8 @@ pub struct Settings {
     pub ai_suggest: bool,
     /// Keep a clipboard history in memory (opt-in).
     pub clip_history: bool,
+    /// Ask GitHub once a day whether there is a newer version.
+    pub update_check: bool,
     /// Without an API key, questions open here: "claude" | "chatgpt".
     pub handoff: String,
     /// Lower-cased executable names where the squirrel always hides.
@@ -142,6 +144,7 @@ impl Default for Settings {
             selection_hint: true,
             ai_suggest: false,
             clip_history: false,
+            update_check: true,
             handoff: "claude".into(),
             blacklist: Vec::new(),
             hidden_until: None,

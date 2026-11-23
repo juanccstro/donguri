@@ -1,7 +1,8 @@
 //! Gemini, Claude and OpenAI with the user's own keys. Keys live in the OS
 //! keychain; models come from each provider's model list (never hard-coded),
 //! filtered to text chat, probed with a tiny request, sorted cheapest first.
-//! The only network traffic of the app happens here, and only on request.
+//! Network traffic happens here only on request (plus the daily version
+//! check in updates.rs).
 
 use crate::{
     presence, saving,

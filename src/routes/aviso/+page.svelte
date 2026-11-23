@@ -7,14 +7,14 @@
   import Icon, { type IconName } from "$lib/Icon.svelte";
 
   interface Notice {
-    kind: "ok" | "warn" | "answer" | "info" | "pomo";
+    kind: "ok" | "warn" | "answer" | "info" | "pomo" | "update";
     text: string;
     id: number;
   }
 
-  const ICON: Record<Notice["kind"], IconName> = { ok: "check", warn: "warn", answer: "answer", info: "acorn", pomo: "clock" };
+  const ICON: Record<Notice["kind"], IconName> = { ok: "check", warn: "warn", answer: "answer", info: "acorn", pomo: "clock", update: "down" };
   // Pomodoro phase changes stay a while: they may happen while you look elsewhere.
-  const LIFETIME: Record<Notice["kind"], number> = { ok: 1500, warn: 2600, info: 2600, answer: 20000, pomo: 9000 };
+  const LIFETIME: Record<Notice["kind"], number> = { ok: 1500, warn: 2600, info: 2600, answer: 20000, pomo: 9000, update: 15000 };
 
   let notice = $state<Notice | null>(null);
   let tail = $state<Tail>({ edge: null, x: 0, y: 0 });
@@ -29,6 +29,7 @@
 
   function click() {
     if (notice?.kind === "answer") invoke("bubble_show");
+    else if (notice?.kind === "update") invoke("open_update").then(() => invoke("popup_close"));
     else invoke("popup_close");
   }
 
@@ -83,6 +84,8 @@
   .kind-warn :global(svg) { color: var(--warn); }
   .kind-pomo :global(svg) { color: var(--accent); }
   .kind-pomo { box-shadow: inset 0 0 0 2px var(--accent); }
+  .kind-update :global(svg) { color: var(--ok); }
+  .kind-update { box-shadow: inset 0 0 0 2px var(--ok); }
 
   @keyframes pop {
     from { transform: translateY(4px); opacity: 0; }

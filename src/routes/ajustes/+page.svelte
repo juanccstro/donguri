@@ -37,6 +37,7 @@
     blacklist: string[];
     shortcuts: Record<"toggle" | "save" | "capture" | "quick" | "capture_ask" | "clipboard", string>;
     clip_history: boolean;
+    update_check: boolean;
   }
   interface Provider {
     id: "gemini" | "claude" | "openai";
@@ -77,6 +78,14 @@
 
   async function refresh() {
     s = await invoke<Settings>("get_settings");
+  }
+
+  let update = $state<{ current: string; available: string | null } | null>(null);
+  let checking = $state(false);
+  async function checkUpdates() {
+    checking = true;
+    update = await invoke("update_check_now");
+    checking = false;
   }
 
   async function set(key: string, value: unknown) {
@@ -201,6 +210,7 @@
     if (tab === "ia") loadProviders();
     if (tab === "integraciones") loadIntegrations();
     if (tab === "privacidad") invoke<string>("data_folder").then((d) => (dataFolder = d));
+    if (tab === "ayuda") invoke<{ current: string; available: string | null }>("update_info").then((u) => (update = u));
     if (tab === "comportamiento") invoke<boolean>("autostart_get").then((v) => (autostart = v));
   });
 
@@ -435,6 +445,10 @@
             <input type="checkbox" checked={s.clip_history} onchange={(e) => set("clip_history", e.currentTarget.checked)} />
             <span>{t("clip_history_d")}</span>
           </label>
+          <label class="check">
+            <input type="checkbox" checked={s.update_check} onchange={(e) => set("update_check", e.currentTarget.checked)} />
+            <span><strong>{t("setup_updates")}</strong> <span class="muted">{t("update_check_d")}</span></span>
+          </label>
           <h4 class="title">{t("data_folder")}</h4>
           <p class="muted tiny">{dataFolder}</p>
           <button class="btn" onclick={() => invoke("open_data_folder")}><Icon name="nest" size={13} />{t("open_folder")}</button>
@@ -458,6 +472,15 @@
             </section>
           {/each}
           <button class="btn" onclick={() => invoke("open_window", { name: "bienvenida" })}><Icon name="acorn" size={13} />{t("setup_again")}</button>
+          <h4 class="title">{t("version_t")}</h4>
+          <div class="row">
+            <span class="grow">Donguri {update?.current ?? ""}{update?.available ? ` · ${t("update_new", { v: update.available })}` : ""}</span>
+            {#if update?.available}
+              <button class="btn primary" onclick={() => invoke("open_update")}><Icon name="down" size={13} />{t("update_get")}</button>
+            {:else}
+              <button class="btn" disabled={checking} onclick={checkUpdates}><Icon name="restart" size={13} />{t("update_check")}</button>
+            {/if}
+          </div>
         {:else if tab === "idioma"}
           <h4 class="title">{t("language")}</h4>
           {#each [["es", "Español"], ["en", "English"]] as [code, name]}

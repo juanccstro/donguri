@@ -9,6 +9,7 @@
 
 <p align="center">
   <a href="https://github.com/juanccstro/donguri/releases/latest"><img src="https://img.shields.io/badge/Descargar_para_Windows-D97757?style=for-the-badge&logo=windows&logoColor=white" alt="Descargar para Windows"></a>
+  <a href="https://github.com/juanccstro/donguri/releases"><img src="https://img.shields.io/github/downloads/juanccstro/donguri/total?style=for-the-badge&label=descargas&color=7A4A28" alt="Descargas totales"></a>
 </p>
 
 <p align="center">

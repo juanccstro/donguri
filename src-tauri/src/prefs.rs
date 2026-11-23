@@ -47,6 +47,10 @@ pub fn set_setting(app: AppHandle, key: String, value: Value) -> Result<Vec<Stri
             let v = as_bool()?;
             presence::update(&app, |s| s.selection_hint = v);
         }
+        "update_check" => {
+            let v = as_bool()?;
+            presence::update(&app, |s| s.update_check = v);
+        }
         "clip_history" => crate::history::set_enabled(&app, as_bool()?),
         "ai_suggest" => {
             let v = as_bool()?;

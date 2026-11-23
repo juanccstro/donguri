@@ -114,6 +114,7 @@ const es: HelpTopic[] = [
     points: [
       "Todo se guarda en tu equipo; las claves en el llavero de Windows.",
       "Modo privado (clic derecho → Modo privado): no guarda nada y se pone un antifaz.",
+      "Solo se conecta a internet para tu IA (cuando preguntas) y, una vez al día, para ver en GitHub si hay versión nueva. Esto último se quita en Ajustes → Privacidad.",
     ],
   },
 ];
@@ -224,6 +225,7 @@ const en: HelpTopic[] = [
     points: [
       "Everything is stored on your computer; keys in the Windows keychain.",
       "Private mode (right-click → Private mode): saves nothing and wears a mask.",
+      "It only goes online for your AI (when you ask) and, once a day, to check GitHub for a new version. You can turn the latter off in Settings → Privacy.",
     ],
   },
 ];

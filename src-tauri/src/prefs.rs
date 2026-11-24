@@ -52,6 +52,7 @@ pub fn set_setting(app: AppHandle, key: String, value: Value) -> Result<Vec<Stri
             presence::update(&app, |s| s.update_check = v);
         }
         "clip_history" => crate::history::set_enabled(&app, as_bool()?),
+        "clip_images" => crate::history::set_images(&app, as_bool()?),
         "ai_suggest" => {
             let v = as_bool()?;
             presence::update(&app, |s| s.ai_suggest = v);
@@ -208,9 +209,33 @@ pub fn acorn_move(app: AppHandle, id: i64, nest_id: i64) -> Result<(), String> {
     Ok(())
 }
 
+/// A note written by hand in Kura.
 #[tauri::command]
-pub fn acorn_rename(app: AppHandle, id: i64, title: String) -> Result<(), String> {
-    with_db(&app, |c| store::rename_acorn(c, id, &title))?;
+pub fn acorn_new(app: AppHandle, nest_id: i64, title: String, content: String) -> Result<i64, String> {
+    let title = if title.trim().is_empty() { saving::title_from(&content) } else { title.trim().to_string() };
+    if title.is_empty() && content.trim().is_empty() {
+        return Err("empty".into());
+    }
+    let id = with_db(&app, |c| {
+        store::add_acorn(c, store::NewAcorn { nest_id, kind: "texto", title: &title, content: &content, file: None, source: None })
+    })?;
+    notices::changed(&app);
+    Ok(id)
+}
+
+/// Saves an acorn edited in Kura (images keep their content: only the title changes).
+#[tauri::command]
+pub fn acorn_edit(app: AppHandle, id: i64, title: String, content: Option<String>) -> Result<(), String> {
+    with_db(&app, |c| {
+        let Some(a) = store::acorn(c, id)? else { return Ok(()) };
+        let content = match content {
+            Some(text) if a.file.is_none() => text,
+            _ => a.content,
+        };
+        let title = if title.trim().is_empty() { saving::title_from(&content) } else { title };
+        let title = if title.trim().is_empty() { a.title } else { title };
+        store::edit_acorn(c, id, &title, &content)
+    })?;
     notices::changed(&app);
     Ok(())
 }

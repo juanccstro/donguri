@@ -110,12 +110,20 @@
     await invoke("save_pending", { target: { to: "new", name: newName.trim() } });
   }
 
-  /** Esc (or clicking elsewhere): never lose it, it goes to Sin clasificar. */
+  /** Esc: never lose it, it goes to Sin clasificar. */
   async function dismiss() {
     if (done) return;
     done = true;
     if (contextMode) await closeSelf();
     else await invoke("save_pending", { target: { to: "unsorted" } });
+  }
+
+  /** Clicking elsewhere: the user does not want it, nothing is saved. */
+  async function discard() {
+    if (done) return;
+    done = true;
+    if (contextMode) await closeSelf();
+    else await invoke("save_pending", { target: { to: "discard" } });
   }
 
   function onKey(e: KeyboardEvent) {
@@ -159,13 +167,33 @@
     }
     const offData = listen("data-changed", load);
     const stop = fitWindow(box, (t) => (tail = t));
-    const onBlur = () => setTimeout(() => !document.hasFocus() && dismiss(), 150);
+    // A click elsewhere discards it, but only once the picker has really had
+    // the keyboard for a moment: right after it opens, Windows may take the
+    // focus away on its own, and that is not the user saying no.
+    let armed = false;
+    let armTimer: number | undefined;
+    const arm = () => {
+      clearTimeout(armTimer);
+      armTimer = setTimeout(() => (armed = document.hasFocus()), 300);
+    };
+    const onBlur = () => {
+      clearTimeout(armTimer);
+      if (!armed) {
+        setTimeout(() => window.focus(), 50);
+        return;
+      }
+      setTimeout(() => !document.hasFocus() && discard(), 150);
+    };
+    window.addEventListener("focus", arm);
     window.addEventListener("blur", onBlur);
     window.focus();
+    if (document.hasFocus()) arm();
     return () => {
       offData.then((f) => f());
       stop();
       window.removeEventListener("blur", onBlur);
+      window.removeEventListener("focus", arm);
+      clearTimeout(armTimer);
     };
   });
 </script>

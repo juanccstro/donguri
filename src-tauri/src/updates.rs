@@ -85,28 +85,41 @@ async fn latest() -> Result<Option<String>, String> {
 }
 
 /// Asks GitHub and tells the user if there is a newer version. `asked`: the
-/// user pressed "Buscar actualizaciones", so "you're up to date" is said too.
-async fn check(app: &AppHandle, asked: bool) -> Option<String> {
+/// user pressed "Buscar actualizaciones", so "you're up to date" (or "could
+/// not check") is said too. A failed check keeps what an earlier one found.
+async fn check(app: &AppHandle, asked: bool) -> Check {
     let current = env!("CARGO_PKG_VERSION");
-    let found = latest().await.ok().flatten().filter(|v| newer(v, current));
-    if let Some(state) = app.try_state::<Mutex<Updates>>()
-        && let Ok(mut u) = state.lock()
-    {
-        u.available = found.clone();
-    }
-    crate::menus::refresh(app);
+    let result = latest().await.map(|v| v.filter(|v| newer(v, current)));
+    let found = match &result {
+        Ok(found) => {
+            if let Some(state) = app.try_state::<Mutex<Updates>>()
+                && let Ok(mut u) = state.lock()
+            {
+                u.available = found.clone();
+            }
+            crate::menus::refresh(app);
+            found.clone()
+        }
+        Err(_) => available(app),
+    };
     let (en, private) = {
         let st = presence::state(app);
         (st.settings.en(), st.settings.private_mode)
     };
-    match &found {
-        Some(v) if asked || !private => {
+    match (&result, &found) {
+        (Err(_), _) if asked => notices::show(app, "warn", t(en, "update_failed")),
+        (Ok(_), Some(v)) if asked || !private => {
             notices::show(app, "update", &t(en, "update_available").replace("{v}", v));
         }
-        None if asked => notices::show(app, "ok", t(en, "update_none")),
+        (Ok(None), None) if asked => notices::show(app, "ok", t(en, "update_none")),
         _ => {}
     }
-    found
+    Check { available: found, failed: result.is_err() }
+}
+
+struct Check {
+    available: Option<String>,
+    failed: bool,
 }
 
 /// The newer version found, if any (for the menus).
@@ -119,18 +132,20 @@ pub fn available(app: &AppHandle) -> Option<String> {
 pub struct UpdateInfo {
     current: &'static str,
     available: Option<String>,
+    /// The last check could not reach GitHub (no connection…).
+    failed: bool,
 }
 
 #[tauri::command]
 pub fn update_info(app: AppHandle) -> UpdateInfo {
-    UpdateInfo { current: env!("CARGO_PKG_VERSION"), available: available(&app) }
+    UpdateInfo { current: env!("CARGO_PKG_VERSION"), available: available(&app), failed: false }
 }
 
 /// "Buscar actualizaciones" in Ajustes.
 #[tauri::command]
 pub async fn update_check_now(app: AppHandle) -> UpdateInfo {
-    let available = check(&app, true).await;
-    UpdateInfo { current: env!("CARGO_PKG_VERSION"), available }
+    let c = check(&app, true).await;
+    UpdateInfo { current: env!("CARGO_PKG_VERSION"), available: c.available, failed: c.failed }
 }
 
 /// Opens the release page to download the new version.

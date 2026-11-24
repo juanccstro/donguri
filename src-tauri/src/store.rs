@@ -271,8 +271,9 @@ pub fn move_acorn(c: &Connection, id: i64, nest_id: i64) -> Result<()> {
     touch_nest(c, nest_id)
 }
 
-pub fn rename_acorn(c: &Connection, id: i64, title: &str) -> Result<()> {
-    c.execute("UPDATE acorns SET title = ?2 WHERE id = ?1", params![id, title.trim()])?;
+/// Rewrites a text acorn (title and content), e.g. edited by hand in Kura.
+pub fn edit_acorn(c: &Connection, id: i64, title: &str, content: &str) -> Result<()> {
+    c.execute("UPDATE acorns SET title = ?2, content = ?3 WHERE id = ?1", params![id, title.trim(), content])?;
     Ok(())
 }
 
@@ -432,6 +433,15 @@ mod tests {
         assert!(small.truncated);
         assert!(small.text.contains("Shinkansen"));
         assert!(small.text.chars().count() <= 200);
+    }
+
+    #[test]
+    fn edited_acorns_are_found_by_their_new_words() {
+        let c = db();
+        let a = add(&c, UNSORTED, "Nota", "primer borrador");
+        edit_acorn(&c, a, "Nota", "texto corregido").unwrap();
+        assert!(search(&c, "borrador", None, 10).unwrap().is_empty());
+        assert_eq!(search(&c, "corregido", None, 10).unwrap().len(), 1);
     }
 
     #[test]

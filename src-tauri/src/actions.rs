@@ -424,6 +424,26 @@ pub fn open_kura_at(app: &AppHandle, clipboard: bool) {
     }
 }
 
+/// The acorn Kura should show when it opens ("Mover" in the saved notice).
+static OPEN_ACORN: std::sync::Mutex<Option<i64>> = std::sync::Mutex::new(None);
+
+/// Opens Kura on one acorn.
+#[tauri::command]
+pub fn open_acorn(app: AppHandle, id: i64) {
+    let fresh = popups::get(&app, "kura").is_none();
+    *OPEN_ACORN.lock().unwrap_or_else(|e| e.into_inner()) = Some(id);
+    popups::open(&app, Spec { label: "kura", url: "kura", w: 460.0, h: 560.0, focusable: true, place: Place::Center });
+    if !fresh {
+        let _ = app.emit_to("kura", "kura-acorn", ());
+    }
+}
+
+/// Kura asks, once open, whether it should show one acorn.
+#[tauri::command]
+pub fn kura_take_acorn() -> Option<i64> {
+    OPEN_ACORN.lock().ok()?.take()
+}
+
 pub fn open_settings(app: &AppHandle, tab: Option<&str>) {
     let fresh = popups::get(app, "ajustes").is_none();
     let url = match tab {

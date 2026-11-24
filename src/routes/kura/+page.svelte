@@ -56,6 +56,10 @@
   let shortcut = $state("Alt+Shift+S");
   let moving = $state(false);
   let renameInput = $state<HTMLInputElement>();
+  // Writing a new note (id null) or editing an acorn. Only text acorns have
+  // editable content; images and files keep theirs and change only the title.
+  let editing = $state<{ id: number | null; title: string; content: string; text: boolean } | null>(null);
+  let editArea = $state<HTMLTextAreaElement>();
   // ?vista=portapapeles (or the shortcut while Kura is open) shows the clipboard.
   let clipView = $state(new URLSearchParams(location.search).get("vista") === "portapapeles");
 
@@ -88,13 +92,56 @@
   }
 
   function showClipboard() {
+    editing = null;
     clipView = true;
     open = null;
     hits = null;
     query = "";
   }
 
+  async function newNote() {
+    open = null;
+    hits = null;
+    editing = { id: null, title: "", content: "", text: true };
+    await tick();
+    editArea?.focus();
+  }
+
+  async function editAcorn(a: AcornView) {
+    editing = { id: a.id, title: a.title, content: a.content, text: !a.image && a.kind === "texto" };
+    await tick();
+    editArea?.focus();
+  }
+
+  async function saveEdit() {
+    const e = editing;
+    if (!e) return;
+    if (e.id === null) {
+      if (!e.title.trim() && !e.content.trim()) return;
+      const id = await invoke<number>("acorn_new", { nestId: selectedId, title: e.title, content: e.content });
+      editing = null;
+      await loadNests();
+      await openAcorn(id);
+    } else {
+      await invoke("acorn_edit", { id: e.id, title: e.title, content: e.text ? e.content : null });
+      editing = null;
+      await loadNests();
+      await openAcorn(e.id);
+    }
+  }
+
+  function editKey(ev: KeyboardEvent) {
+    if (ev.key === "Enter" && (ev.ctrlKey || ev.metaKey)) {
+      ev.preventDefault();
+      saveEdit();
+    } else if (ev.key === "Escape") {
+      ev.preventDefault();
+      editing = null;
+    }
+  }
+
   async function selectNest(id: number) {
+    editing = null;
     clipView = false;
     selectedId = id;
     open = null;
@@ -104,6 +151,7 @@
   }
 
   async function openAcorn(id: number) {
+    editing = null;
     open = await invoke<AcornView | null>("acorn", { id });
     moving = false;
   }
@@ -182,6 +230,22 @@
     loadNests();
     const off = listen("data-changed", loadNests);
     const offClip = listen("kura-clipboard", showClipboard);
+    // "Mover" in the saved notice: show that acorn with its nest list open.
+    const showAsked = async () => {
+      const id = await invoke<number | null>("kura_take_acorn");
+      if (id === null) return;
+      const a = await invoke<AcornView | null>("acorn", { id });
+      if (!a) return;
+      clipView = false;
+      hits = null;
+      query = "";
+      selectedId = a.nest_id;
+      await loadAcorns();
+      await openAcorn(id);
+      moving = true;
+    };
+    showAsked();
+    const offAcorn = listen("kura-acorn", showAsked);
     // Clicking outside Kura closes it (unless a confirmation is pending).
     const onBlur = () =>
       setTimeout(() => {
@@ -191,6 +255,7 @@
     return () => {
       off.then((f) => f());
       offClip.then((f) => f());
+      offAcorn.then((f) => f());
       window.removeEventListener("blur", onBlur);
     };
   });
@@ -235,7 +300,25 @@
     </nav>
 
     <section class="acorns">
-      {#if clipView}
+      {#if editing}
+        <div class="bar">
+          <span class="title nest-title">{editing.id === null ? t("new_note") : t("edit")}</span>
+          <span class="grow"></span>
+          <span class="muted small">{t("edit_hint")}</span>
+        </div>
+        <div class="editor" onkeydown={editKey} role="presentation">
+          <input class="field" aria-label={t("title_ph")} placeholder={t("title_ph")} bind:value={editing.title} />
+          {#if editing.text}
+            <textarea class="field" aria-label={t("note_ph")} placeholder={t("note_ph")} bind:this={editArea} bind:value={editing.content}></textarea>
+          {/if}
+        </div>
+        <div class="tools">
+          <button class="btn primary" disabled={editing.id === null && !editing.title.trim() && !editing.content.trim()} onclick={saveEdit}>
+            <Icon name="check" size={13} />{t("save")}
+          </button>
+          <button class="btn" onclick={() => (editing = null)}>{t("cancel")}</button>
+        </div>
+      {:else if clipView}
         <ClipHistory {query} />
       {:else if hits}
         <div class="bar muted">{hits.length === 1 ? t("results_one") : hits.length ? t("results_n", { n: hits.length }) : t("no_results")}</div>
@@ -269,6 +352,7 @@
           {#if open.image}
             <button class="btn primary" onclick={() => open && invoke("ask_acorn", { id: open.id })}><Icon name="ask" size={13} />{t("ask_image")}</button>
           {/if}
+          <button class="btn" onclick={() => open && editAcorn(open)}><Icon name="pencil" size={13} />{t("edit")}</button>
           {#if open.content}
             <button class="btn" onclick={() => invoke("copy_text", { text: open?.content ?? "" }).then(() => flash(t("copied")))}><Icon name="copy" size={13} />{t("copy")}</button>
           {/if}
@@ -290,6 +374,7 @@
         <div class="bar">
           <span class="title nest-title">{nestName(selected)}</span>
           <span class="grow"></span>
+          <button class="btn ghost" title={t("new_note")} onclick={newNote}><Icon name="plus" size={14} /></button>
           {#if !selected.system}
             <button class="btn ghost" title={active === selected.id ? t("unset_active") : t("set_active")} onclick={() => toggleActive(selected!)}>
               <Icon name="pin" size={14} />
@@ -582,6 +667,24 @@
     max-height: 200px;
     overflow-y: auto;
     z-index: 2;
+  }
+
+  .editor {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 8px;
+  }
+
+  .editor textarea {
+    flex: 1;
+    min-height: 120px;
+    resize: none;
+    font-family: var(--font);
+    font-size: 13px;
+    line-height: 1.4;
   }
 
   .modal {

@@ -27,7 +27,24 @@ const SECRET_APPS: &[&str] = &[
 
 enum Body {
     Text(String),
-    Png(Vec<u8>),
+    /// The full image (needed to paste, ask or save it) and a small
+    /// thumbnail that is all the list ever shows.
+    Png { full: Vec<u8>, thumb: Vec<u8> },
+}
+
+/// Thumbnails fit in this many pixels per side.
+const THUMB_SIDE: u32 = 240;
+
+fn thumbnail(png: &[u8]) -> Option<Vec<u8>> {
+    let img = image::load_from_memory(png).ok()?;
+    let img = if img.width() > THUMB_SIDE || img.height() > THUMB_SIDE {
+        img.thumbnail(THUMB_SIDE, THUMB_SIDE)
+    } else {
+        img
+    };
+    let mut out = std::io::Cursor::new(Vec::new());
+    img.write_to(&mut out, image::ImageFormat::Png).ok()?;
+    Some(out.into_inner())
 }
 
 struct Item {
@@ -73,6 +90,17 @@ pub fn start(app: &AppHandle) {
     let _ = app;
 }
 
+/// Whether copied images are kept too; turning it off forgets those already kept.
+pub fn set_images(app: &AppHandle, on: bool) {
+    presence::update(app, |s| s.clip_images = on);
+    if !on {
+        if let Ok(mut h) = app.state::<Mutex<History>>().lock() {
+            h.items.retain(|i| !matches!(i.body, Body::Png { .. }));
+        }
+        let _ = app.emit_to(LABEL, "clip-history-changed", ());
+    }
+}
+
 /// Turning it off forgets everything at once.
 pub fn set_enabled(app: &AppHandle, on: bool) {
     presence::update(app, |s| s.clip_history = on);
@@ -87,7 +115,7 @@ fn on_copy(app: &AppHandle, owner: Option<String>) {
     if clip::is_ours() {
         return;
     }
-    let exe = {
+    let (exe, images) = {
         let st = presence::state(app);
         if !st.settings.clip_history || st.settings.private_mode {
             return;
@@ -98,7 +126,7 @@ fn on_copy(app: &AppHandle, owner: Option<String>) {
         if exe.as_ref().is_some_and(secret) || st.foreground_exe.as_ref().is_some_and(secret) {
             return;
         }
-        exe
+        (exe, st.settings.clip_images)
     };
     // The app that copied may announce it before the data is all there.
     std::thread::sleep(std::time::Duration::from_millis(40));
@@ -110,10 +138,12 @@ fn on_copy(app: &AppHandle, owner: Option<String>) {
             Body::Text(t.chars().take(MAX_CHARS).collect())
         }
         Some(clip::Content::Image { width, height, rgba }) => {
-            match saving::rgba_to_png(width as u32, height as u32, rgba) {
-                Some(png) => Body::Png(png),
-                None => return,
+            if !images {
+                return;
             }
+            let Some(full) = saving::rgba_to_png(width as u32, height as u32, rgba) else { return };
+            let Some(thumb) = thumbnail(&full) else { return };
+            Body::Png { full, thumb }
         }
         None => return,
     };
@@ -123,7 +153,7 @@ fn on_copy(app: &AppHandle, owner: Option<String>) {
     // (Some apps announce one copy twice: the same rule keeps one.)
     h.items.retain(|i| match (&i.body, &body) {
         (Body::Text(old), Body::Text(new)) => old != new,
-        (Body::Png(old), Body::Png(new)) => old != new,
+        (Body::Png { full: old, .. }, Body::Png { full: new, .. }) => old != new,
         _ => true,
     });
     h.next += 1;
@@ -131,7 +161,7 @@ fn on_copy(app: &AppHandle, owner: Option<String>) {
     h.items.insert(0, Item { id, body, at: chrono::Local::now().timestamp(), app: exe });
     let mut images = 0;
     h.items.retain(|i| {
-        if matches!(i.body, Body::Png(_)) {
+        if matches!(i.body, Body::Png { .. }) {
             images += 1;
             images <= MAX_IMAGES
         } else {
@@ -171,10 +201,10 @@ pub fn clip_history(app: AppHandle) -> Vec<Entry> {
                 at: i.at,
                 app: i.app.clone(),
             },
-            Body::Png(p) => Entry {
+            Body::Png { thumb, .. } => Entry {
                 id: i.id,
                 kind: "image",
-                preview: format!("data:image/png;base64,{}", base64::engine::general_purpose::STANDARD.encode(p)),
+                preview: format!("data:image/png;base64,{}", base64::engine::general_purpose::STANDARD.encode(thumb)),
                 chars: 0,
                 at: i.at,
                 app: i.app.clone(),
@@ -188,7 +218,7 @@ fn take_body(app: &AppHandle, id: u64) -> Option<Body> {
     let h = state.lock().ok()?;
     h.items.iter().find(|i| i.id == id).map(|i| match &i.body {
         Body::Text(t) => Body::Text(t.clone()),
-        Body::Png(p) => Body::Png(p.clone()),
+        Body::Png { full, .. } => Body::Png { full: full.clone(), thumb: Vec::new() },
     })
 }
 
@@ -199,7 +229,7 @@ pub fn clip_history_use(app: AppHandle, id: u64, action: String) {
     popups::close(&app, LABEL);
     match (action.as_str(), body) {
         ("paste", Body::Text(text)) => actions::paste_text(app, text),
-        ("paste", Body::Png(png)) => {
+        ("paste", Body::Png { full: png, .. }) => {
             std::thread::spawn(move || {
                 let ok = clip::paste_png_into_last_app(&png);
                 let h = app.clone();
@@ -210,16 +240,16 @@ pub fn clip_history_use(app: AppHandle, id: u64, action: String) {
             });
         }
         ("ask", Body::Text(text)) => actions::ask_with(&app, text, None),
-        ("ask", Body::Png(png)) => actions::ask_about_image(&app, png),
+        ("ask", Body::Png { full: png, .. }) => actions::ask_about_image(&app, png),
         ("save", Body::Text(text)) => saving::begin_text(&app, text, "portapapeles"),
-        ("save", Body::Png(png)) => {
+        ("save", Body::Png { full: png, .. }) => {
             let title = format!("Imagen {}", chrono::Local::now().format("%d/%m %H:%M"));
             saving::begin_image(&app, &png, title, "portapapeles");
         }
         (_, Body::Text(text)) => {
             clip::set_text(&text);
         }
-        (_, Body::Png(png)) => {
+        (_, Body::Png { full: png, .. }) => {
             clip::set_png(&png);
         }
     }
@@ -248,4 +278,20 @@ pub fn clip_history_enable(app: AppHandle, on: bool) {
 
 pub fn open(app: &AppHandle) {
     actions::open_kura_at(app, true);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{thumbnail, THUMB_SIDE};
+
+    #[test]
+    fn thumbnails_are_small() {
+        let shot = image::RgbaImage::from_pixel(1920, 1080, image::Rgba([200, 120, 80, 255]));
+        let mut png = std::io::Cursor::new(Vec::new());
+        image::DynamicImage::ImageRgba8(shot).write_to(&mut png, image::ImageFormat::Png).unwrap();
+        let png = png.into_inner();
+        let thumb = image::load_from_memory(&thumbnail(&png).unwrap()).unwrap();
+        assert!(thumb.width() <= THUMB_SIDE && thumb.height() <= THUMB_SIDE);
+        assert_eq!(thumb.width(), THUMB_SIDE);
+    }
 }

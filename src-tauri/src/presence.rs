@@ -250,8 +250,51 @@ fn snap(app: &AppHandle) -> Option<Edge> {
         st.settings.preferred_monitor = Some(name);
         st.save();
     }
-    apply(app, &monitor, placement);
+    glide(app, &win, pos, edge_position(&monitor, placement, s as u32), monitor, placement);
     Some(edge)
+}
+
+/// Bumped by every drag: a glide still running when a new drag starts stops.
+static GLIDE: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+
+/// After a drag she falls toward the edge (speeding up, like a small drop)
+/// instead of jumping there, then sticks to it as before. ~60 fps for at
+/// most a third of a second, then nothing runs.
+fn glide(app: &AppHandle, win: &WebviewWindow, from: PhysicalPosition<i32>, to: PhysicalPosition<i32>, monitor: Monitor, placement: Placement) {
+    use std::sync::atomic::Ordering;
+    let (dx, dy) = ((to.x - from.x) as f64, (to.y - from.y) as f64);
+    let distance = (dx * dx + dy * dy).sqrt();
+    let generation = GLIDE.fetch_add(1, Ordering::SeqCst) + 1;
+    if distance < 4.0 {
+        apply(app, &monitor, placement);
+        return;
+    }
+    let total = (90.0 + distance * 0.35).min(320.0);
+    let (app, win) = (app.clone(), win.clone());
+    std::thread::spawn(move || {
+        let start = std::time::Instant::now();
+        loop {
+            if GLIDE.load(Ordering::SeqCst) != generation {
+                return;
+            }
+            let p = (start.elapsed().as_secs_f64() * 1000.0 / total).min(1.0);
+            let e = p * p; // ease-in: it falls
+            let _ = win.set_position(PhysicalPosition::new(
+                from.x + (dx * e).round() as i32,
+                from.y + (dy * e).round() as i32,
+            ));
+            if p >= 1.0 {
+                break;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(16));
+        }
+        let h = app.clone();
+        let _ = app.run_on_main_thread(move || {
+            if GLIDE.load(Ordering::SeqCst) == generation {
+                apply(&h, &monitor, placement);
+            }
+        });
+    });
 }
 
 // --------------------------------------------------------------- visibility
@@ -615,6 +658,8 @@ pub fn get_config(app: AppHandle) -> Config {
 
 #[tauri::command]
 pub fn drag_start(app: AppHandle) {
+    // Grabbing her mid-fall stops the fall where she is.
+    GLIDE.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
     let Some(win) = squirrel(&app) else { return };
     if let (Ok(cursor), Ok(window)) = (app.cursor_position(), win.outer_position()) {
         state(&app).drag = Some(Drag { cursor, window });

@@ -1,8 +1,8 @@
 //! Tray icon menu and the squirrel's right-click menu (same builder).
 
-use crate::{actions, i18n::t, presence, settings::Mode};
+use crate::{actions, i18n::t, presence};
 use tauri::{
-    menu::{CheckMenuItem, Menu, MenuBuilder, MenuItem, PredefinedMenuItem, SubmenuBuilder},
+    menu::{CheckMenuItem, Menu, MenuBuilder, MenuItem, PredefinedMenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
     AppHandle, Manager, Wry,
 };
@@ -50,40 +50,9 @@ pub fn build(app: &AppHandle, for_squirrel: bool) -> tauri::Result<Menu<Wry>> {
         menu = menu.text("blacklist_add", format!("{} {}", t(en, "hide_in"), app_label(exe)));
     }
 
-    let modes = SubmenuBuilder::new(app, t(en, "mode"))
-        .item(&check(app, "mode:quieta", t(en, "quieta"), s.mode == Mode::Quieta)?)
-        .item(&check(app, "mode:viva", t(en, "viva"), s.mode == Mode::Viva)?)
-        .item(&check(app, "mode:escondida", t(en, "escondida"), s.mode == Mode::Escondida)?)
-        .build()?;
-
-    let sizes = SubmenuBuilder::new(app, t(en, "size"))
-        .item(&check(app, "scale:4", t(en, "small"), s.scale == 4)?)
-        .item(&check(app, "scale:6", t(en, "medium"), s.scale == 6)?)
-        .item(&check(app, "scale:8", t(en, "large"), s.scale == 8)?)
-        .build()?;
-
-    let behaviour = SubmenuBuilder::new(app, t(en, "behaviour"))
-        .item(&check(app, "opt:fullscreen", t(en, "opt_fullscreen"), s.hide_fullscreen)?)
-        .item(&check(app, "opt:capture", t(en, "opt_capture"), s.exclude_from_capture)?)
-        .item(&check(app, "opt:fade", t(en, "opt_fade"), s.fade_when_idle)?)
-        .build()?;
-
-    let mut blocked = SubmenuBuilder::new(app, t(en, "blocked"));
-    if s.blacklist.is_empty() {
-        blocked = blocked.item(&MenuItem::with_id(app, "none", t(en, "no_apps"), false, None::<&str>)?);
-    } else {
-        for exe in &s.blacklist {
-            blocked = blocked.text(format!("unblock:{exe}"), format!("{} ({})", app_label(exe), t(en, "remove")));
-        }
-    }
-    let blocked = blocked.build()?;
-
+    // Only the quick switches: mode, size, behaviour and blocked apps live in Ajustes.
     let menu = menu
         .separator()
-        .item(&modes)
-        .item(&sizes)
-        .item(&behaviour)
-        .item(&blocked)
         .item(&check(app, "opt:selection_hint", t(en, "quick_acorn"), s.selection_hint)?)
         .item(&check(app, "opt:private", t(en, "private"), s.private_mode)?)
         .item(&PredefinedMenuItem::separator(app)?)
@@ -142,15 +111,6 @@ pub fn handle(app: &AppHandle, id: &str) {
                 crate::platform::focus_last_app();
                 actions::run(app, action);
                 return;
-            } else if let Some(mode) = id.strip_prefix("mode:") {
-                let mode = match mode {
-                    "quieta" => Mode::Quieta,
-                    "escondida" => Mode::Escondida,
-                    _ => Mode::Viva,
-                };
-                presence::set_mode(app, mode);
-            } else if let Some(scale) = id.strip_prefix("scale:").and_then(|s| s.parse().ok()) {
-                presence::set_scale(app, scale);
             } else if let Some(option) = id.strip_prefix("opt:") {
                 presence::set_option(app, option, None);
                 if option == "selection_hint" {
@@ -164,8 +124,6 @@ pub fn handle(app: &AppHandle, id: &str) {
                         crate::popups::close(app, crate::selection::LABEL);
                     }
                 }
-            } else if let Some(exe) = id.strip_prefix("unblock:") {
-                presence::unblock(app, exe);
             } else {
                 return;
             }

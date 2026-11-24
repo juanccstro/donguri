@@ -37,6 +37,7 @@
     blacklist: string[];
     shortcuts: Record<"toggle" | "save" | "capture" | "quick" | "capture_ask" | "clipboard", string>;
     clip_history: boolean;
+    clip_images: boolean;
     update_check: boolean;
   }
   interface Provider {
@@ -80,7 +81,7 @@
     s = await invoke<Settings>("get_settings");
   }
 
-  let update = $state<{ current: string; available: string | null } | null>(null);
+  let update = $state<{ current: string; available: string | null; failed?: boolean } | null>(null);
   let checking = $state(false);
   async function checkUpdates() {
     checking = true;
@@ -445,6 +446,12 @@
             <input type="checkbox" checked={s.clip_history} onchange={(e) => set("clip_history", e.currentTarget.checked)} />
             <span>{t("clip_history_d")}</span>
           </label>
+          {#if s.clip_history}
+            <label class="check sub">
+              <input type="checkbox" checked={s.clip_images} onchange={(e) => set("clip_images", e.currentTarget.checked)} />
+              <span>{t("clip_images_d")}</span>
+            </label>
+          {/if}
           <label class="check">
             <input type="checkbox" checked={s.update_check} onchange={(e) => set("update_check", e.currentTarget.checked)} />
             <span><strong>{t("setup_updates")}</strong> <span class="muted">{t("update_check_d")}</span></span>
@@ -474,7 +481,7 @@
           <button class="btn" onclick={() => invoke("open_window", { name: "bienvenida" })}><Icon name="acorn" size={13} />{t("setup_again")}</button>
           <h4 class="title">{t("version_t")}</h4>
           <div class="row">
-            <span class="grow">Donguri {update?.current ?? ""}{update?.available ? ` · ${t("update_new", { v: update.available })}` : ""}</span>
+            <span class="grow">Donguri {update?.current ?? ""}{update?.available ? ` · ${t("update_new", { v: update.available })}` : update?.failed ? ` · ${t("update_failed")}` : ""}</span>
             {#if update?.available}
               <button class="btn primary" onclick={() => invoke("open_update")}><Icon name="down" size={13} />{t("update_get")}</button>
             {:else}
@@ -599,6 +606,9 @@
     align-items: flex-start;
     margin: 6px 0;
     cursor: pointer;
+  }
+  .check.sub {
+    margin-left: 22px;
   }
 
   input[type="radio"],

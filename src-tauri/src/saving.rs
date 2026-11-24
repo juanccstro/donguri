@@ -53,7 +53,7 @@ pub fn with_db<T>(app: &AppHandle, f: impl FnOnce(&rusqlite::Connection) -> stor
     f(&conn).map_err(|e| e.to_string())
 }
 
-fn title_from(text: &str) -> String {
+pub fn title_from(text: &str) -> String {
     let line = text.lines().map(str::trim).find(|l| !l.is_empty()).unwrap_or("");
     let mut title: String = line.chars().take(60).collect();
     if line.chars().count() > 60 {
@@ -227,6 +227,8 @@ pub enum Target {
     Nest { id: i64 },
     New { name: String },
     Unsorted,
+    /// Clicking outside the picker: the user does not want it kept.
+    Discard,
 }
 
 #[tauri::command]
@@ -236,12 +238,19 @@ pub fn save_pending(app: AppHandle, target: Target) -> Result<(), String> {
         return Ok(());
     };
     let nest_id = match target {
+        Target::Discard => {
+            popups::close(&app, PICKER);
+            let en = presence::state(&app).settings.en();
+            notices::show(&app, "info", t(en, "not_saved"));
+            presence::release_peek(&app);
+            return Ok(());
+        }
         Target::Nest { id } => id,
         Target::New { name } if !name.trim().is_empty() => with_db(&app, |c| store::create_nest(c, &name, None))?,
         _ => store::UNSORTED,
     };
     let result = with_db(&app, |c| {
-        store::add_acorn(
+        let id = store::add_acorn(
             c,
             store::NewAcorn {
                 nest_id,
@@ -252,15 +261,15 @@ pub fn save_pending(app: AppHandle, target: Target) -> Result<(), String> {
                 source: Some(&p.source),
             },
         )?;
-        store::nest(c, nest_id)
+        Ok((id, store::nest(c, nest_id)?))
     });
     popups::close(&app, PICKER);
     let en = presence::state(&app).settings.en();
     match result {
-        Ok(nest) => {
+        Ok((id, nest)) => {
             presence::animate(&app, "chew");
-            let name = nest.map(|n| n.name).unwrap_or_default();
-            notices::show(&app, "ok", &format!("{} {name}", t(en, "saved_in")));
+            let name = nest.map(|n| if n.system { t(en, "unsorted").to_string() } else { n.name }).unwrap_or_default();
+            notices::show_saved(&app, &format!("{} {name}", t(en, "saved_in")), id);
             notices::changed(&app);
         }
         Err(e) => {

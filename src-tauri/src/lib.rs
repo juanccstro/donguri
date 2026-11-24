@@ -127,7 +127,10 @@ pub fn run() {
             prefs::nest_color,
             prefs::nest_delete,
             prefs::acorn_move,
-            prefs::acorn_rename,
+            prefs::acorn_new,
+            actions::open_acorn,
+            actions::kura_take_acorn,
+            prefs::acorn_edit,
             prefs::acorn_delete,
             prefs::nest_export,
         ])
